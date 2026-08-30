@@ -4,6 +4,9 @@
 
 ## 0.1.0
 
+- package identity を repository owner と一致する `@linhaobo0221/react-native-code-rules` に決定。
+- immutable な GitHub Tag archive の install 方法と、将来の public npm package 名を追記。
+- npm account の所有権と公開フローが明示的に確定するまで `private: true` を維持。
 - React Native / Expo 共通規約の入口と必須読み取り順序を定義。
 - 標準 `mobile/` directory、責務境界、routing 原則を定義。
 - component、styling、Figma、cross-platform interaction、accessibility、delivery 規約を定義。

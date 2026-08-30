@@ -74,16 +74,22 @@ Each locale contains the same ten numbered rule documents and one project-specif
 
 ## Use in an App
 
-Version `0.1.0` remains marked `private` to prevent accidental npm publication before the public scope, license, and release permissions are confirmed. Try it from a local path:
+Version `0.1.0` remains marked `private` to prevent accidental npm registry publication until npm account ownership and the publication workflow are confirmed. Try it from a local path:
 
 ~~~bash
 npm install --save-dev ../react-native-code-rules
 ~~~
 
-After publication to npm or GitHub Packages, install a pinned version:
+After the corrected `v0.1.0` GitHub release is published, install its immutable HTTPS tag archive:
 
 ~~~bash
-npm install --save-dev @qalink/react-native-code-rules@0.1.0
+npm install --save-dev https://github.com/LinHaobo0221/react-native-code-rules/archive/refs/tags/v0.1.0.tar.gz
+~~~
+
+After publication to the public npm registry, install the lowercase scoped package:
+
+~~~bash
+npm install --save-dev @linhaobo0221/react-native-code-rules@0.1.0
 ~~~
 
 Installing the package alone does not activate its rules. The consuming repository must reference the correct localized entry in its own `AGENTS.md`.
@@ -97,7 +103,7 @@ rules_language: en
 
 Before modifying `mobile/`, read these files in full:
 
-1. `node_modules/@qalink/react-native-code-rules/AGENTS.en.md`
+1. `node_modules/@linhaobo0221/react-native-code-rules/AGENTS.en.md`
 2. `mobile/docs/agents/app-specific.md`
 ~~~
 
