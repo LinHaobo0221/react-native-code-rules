@@ -4,6 +4,9 @@
 
 ## 0.1.0
 
+- 将 package 身份确定为 `@linhaobo0221/react-native-code-rules`，与仓库所有者保持一致。
+- 补充不可变 GitHub Tag 压缩包安装方式和未来公共 npm 包名。
+- 在 npm 账号归属与发布流程得到明确确认前保留 `private: true`。
 - 建立 React Native / Expo 共通规约入口与强制读取顺序。
 - 定义标准 `mobile/` 目录、职责边界和路由组织原则。
 - 定义组件、样式、Figma、双端交互、可访问性与交付规则。

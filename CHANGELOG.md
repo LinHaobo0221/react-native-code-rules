@@ -4,6 +4,9 @@
 
 ## 0.1.0
 
+- Established the package identity as `@linhaobo0221/react-native-code-rules` to match the repository owner.
+- Documented the immutable GitHub Tag archive installation path and the future public npm package name.
+- Kept `private: true` until npm account ownership and the publication workflow are explicitly confirmed.
 - Established the shared React Native / Expo rules entry point and required reading order.
 - Defined the standard `mobile/` directory structure, responsibility boundaries, and routing principles.
 - Defined component, styling, Figma, cross-platform interaction, accessibility, and delivery rules.
