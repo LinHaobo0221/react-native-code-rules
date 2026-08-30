@@ -72,16 +72,22 @@ react-native-code-rules/
 
 ## 在 App 中使用
 
-`0.1.0` 暂时设置为 `private`，避免在 GitHub organization、package scope 和发布权限尚未确定前误发布。当前可通过本地路径试用：
+`0.1.0` 暂时设置为 `private`，避免在 npm 账号归属和发布流程尚未确认前误发布到 registry。当前可通过本地路径试用：
 
 ```bash
 npm install --save-dev ../react-native-code-rules
 ```
 
-未来发布到 npm registry 或 GitHub Packages 后，可改为固定版本安装：
+重新发布修正后的 `v0.1.0` GitHub Release 后，可通过不可变的 HTTPS Tag 压缩包固定安装：
 
 ```bash
-npm install --save-dev @qalink/react-native-code-rules@0.1.0
+npm install --save-dev https://github.com/LinHaobo0221/react-native-code-rules/archive/refs/tags/v0.1.0.tar.gz
+```
+
+未来发布到公共 npm registry 后，使用全小写 scoped package 安装：
+
+```bash
+npm install --save-dev @linhaobo0221/react-native-code-rules@0.1.0
 ```
 
 仅安装 package 不会自动使项目规则生效。使用方必须在仓库自身的 `AGENTS.md` 或 `mobile/AGENTS.md` 中明确要求代码生成工具读取本 package：
@@ -93,7 +99,7 @@ rules_language: zh-CN
 
 修改 `mobile/` 前，必须依次完整读取：
 
-1. `node_modules/@qalink/react-native-code-rules/AGENTS.zh-CN.md`
+1. `node_modules/@linhaobo0221/react-native-code-rules/AGENTS.zh-CN.md`
 2. `mobile/docs/agents/app-specific.md`
 
 共通规约定义代码结构和质量下限；项目级文档定义当前 App 的设计与工程事实。

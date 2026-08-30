@@ -72,16 +72,22 @@ react-native-code-rules/
 
 ## App での利用
 
-`0.1.0` は、公開 scope、license、リリース権限が確定する前の誤公開を防ぐため、現時点では `private` のままです。まずはローカルパスで試せます。
+`0.1.0` は、npm account の所有権と公開フローが確定する前の registry への誤公開を防ぐため、現時点では `private` のままです。まずはローカルパスで試せます。
 
 ~~~bash
 npm install --save-dev ../react-native-code-rules
 ~~~
 
-npm registry または GitHub Packages で公開した後は、固定バージョンをインストールします。
+修正版 `v0.1.0` GitHub Release の再公開後は、immutable な HTTPS tag archive から固定バージョンをインストールできます。
 
 ~~~bash
-npm install --save-dev @qalink/react-native-code-rules@0.1.0
+npm install --save-dev https://github.com/LinHaobo0221/react-native-code-rules/archive/refs/tags/v0.1.0.tar.gz
+~~~
+
+public npm registry で公開した後は、小文字の scoped package をインストールします。
+
+~~~bash
+npm install --save-dev @linhaobo0221/react-native-code-rules@0.1.0
 ~~~
 
 package をインストールするだけでは規約は有効になりません。利用側の `AGENTS.md` から、正しい言語の入口を明示的に参照します。
@@ -95,7 +101,7 @@ rules_language: ja
 
 `mobile/` を変更する前に、次のファイルを順番にすべて読みます。
 
-1. `node_modules/@qalink/react-native-code-rules/AGENTS.ja.md`
+1. `node_modules/@linhaobo0221/react-native-code-rules/AGENTS.ja.md`
 2. `mobile/docs/agents/app-specific.md`
 ~~~
 
