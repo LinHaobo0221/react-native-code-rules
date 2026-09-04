@@ -13,9 +13,11 @@
     "CHANGELOG.*.md",
     "LICENSE",
     "docs/**/*.md",
-    "templates/**/*.md"
+    "templates/**/*.md",
+    "scripts/check-docs.mjs"
   ],
   "scripts": {
+    "docs:check": "node scripts/check-docs.mjs",
     "pack:check": "npm pack --dry-run"
   },
   "keywords": [

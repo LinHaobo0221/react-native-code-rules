@@ -1,226 +1,98 @@
-# 08 性能とレンダリング
+# 8. 性能とレンダリングのルール
 
-> 本文書は React Native / Expo App の共通性能規約を定義します。診断方法、コード境界、受け入れ方法を定義し、個別 App の性能予算、list parameter、image library、animation 実装は定義しません。
+本節では、性能とレンダリングに関するルールを網羅する。
 
-## 基本原則
+### 8.1 基本原則
 
-- 最初に測定し、その後 optimize します。直感だけで `memo`、`useMemo`、list parameter を追加しません。
-- 性能の受け入れ確認には release または release に近い build を使い、development mode の結果で最終結論を出しません。
-- JavaScript thread、UI thread、network、image decode、native module の cost を区別します。
-- optimization は correctness、accessibility、readability を維持します。
-- 1 device の偶然の結果をプロジェクト全体の結論にせず、再現可能な操作、固定データ量、定義済み device tier を使います。
-- 測定根拠がなければ、単純で正しい実装を優先します。
+- まず計測し、その結果に基づいて最適化する。
+- 直感だけで `memo`、`useMemo`、`useCallback` やリストのパラメータ調整を重ねない。
+- 性能の受け入れ確認には、リリースビルドか、それに近いビルドを使用する。開発モードでの結果だけで最終判断してはならない。
+- JavaScript スレッド、UI スレッド、ネットワーク、画像デコード、ネイティブモジュールの処理コストを区別する。
+- 最適化しても、正しさ、アクセシビリティ、読みやすさを必ず維持する。
+- 再現可能な操作、固定したデータ量、対象となる性能クラスのデバイスを使用する。
+- 最適化の必要性を示す根拠がない場合は、シンプルで正しい実装を維持する。
 
-## 各プロジェクトが定義する性能事実
+### 8.2 状態、Context、メモ化
 
-各 App は `app-specific.md` に次を記録します。
+- 状態は、それを必要とする最小限の範囲で、安定して管理できる箇所に置く。
+- 1 つのページだけで使う入力状態を、グローバルな Context に持たせない。
+- props や既存の状態から導出できる値を、別の状態として重複して保存しない。
+- コレクションを更新する際は、変更のない項目の参照を維持する。
+- 以前の値に依存する並行更新には、関数形式の状態更新を使用する。
+- Context は、更新頻度と意味に応じて分割する。
+- Context にトークン、大量のリストデータのキャッシュ、高頻度で変化するアニメーション値を保持しない。
+- `memo`、`useMemo`、`useCallback` は、実際の計算コスト、参照の安定性に関する契約、プロファイリングの結果のいずれかで必要性を示せる場合に限って使用する。
+- `React.memo` は、純粋なコンポーネントにのみ使用する。
+- 独自の比較関数では、描画とインタラクションに影響するすべての props を必ず比較する。UI が古い状態のままになる実装にしてはならない。
 
-- 対象 device と最低 support device tier
-- cold start / warm start で注目する metric
-- 主要画面と user path
-- 大規模 list の通常および最大 data volume
-- image size、cache、upload strategy
-- 許可された animation / list package
-- profiling tool と acceptance build の方法
-- 既知の性能 budget または monitoring metric
+### 8.3 大規模なリストと仮想化
 
-共通規約は、すべての App に同じ FPS、startup time、memory、list parameter を固定しません。
+- 短く、今後も増えないことが確実なコンテンツには、`ScrollView` や `map` を使用してよい。
+- 長いリスト、ページネーションのあるリスト、動的なデータには、`FlatList` / `SectionList` か、プロジェクトで承認された仮想化リストを使用する。
+- `ScrollView` で大量の項目を一度に描画しない。
+- 同じ方向にスクロールする `ScrollView` の中に、仮想化リストを入れない。
+- `keyExtractor` には、バックエンドかローカルモデルの安定した ID を使用する。
+- ページを追加する際は、安定した ID で重複を除き、変更のない項目の参照を維持する。
+- `renderItem` で、API 呼び出し、負荷の高い解析、処理量に上限のないデータ変換を行わない。
+- `extraData` には、リスト項目に実際に影響する最小限の状態だけを渡す。
+- `getItemLayout` は、サイズが固定されているか、確実に計算できる場合に限って使用する。オフセットには区切り要素のサイズも含める。
+- 「最適化」のために、可変の高さに対して不正確なレイアウト値を設定してはならない。
+- `initialNumToRender`、`windowSize` などのウィンドウ設定は、初期画面の高さ、項目ごとの処理コスト、対象デバイス、空白が生じるリスク、メモリ、プラットフォームの差異をプロファイリングした結果に基づいて、必ず調整する。
 
-## React rendering の境界
+### 8.4 ページネーション、更新、非同期処理
 
-### State の owner
+- `onEndReached` は冪等でなければならない。
+- リクエストを送る前に、読み込みの重複を防ぐロックを同期的に設定する。次の描画で状態が反映されるのを待つだけにしてはならない。
+- 初回読み込み、更新、追加読み込みの排他関係を必ず明確にする。
+- カーソルは最新のキャッシュから取得し、古い値を保持したクロージャを使用してはならない。
+- 遅れて届いたレスポンスを書き込む前に、リクエストのバージョン、クエリキー、キャンセルシグナルのいずれかを検証する。
+- ページのアンマウント、フィルターの変更、アカウントの切り替え後に、古いレスポンスを新しいページへ書き込んではならない。
+- 末尾の項目を削除した後に、次のページを自動で読み込んで補充するかを明確に定める。リクエストがループする実装にしてはならない。
+- 負荷の高い同期計算を、描画、スクロールハンドラー、押下フィードバックと同じフレームで実行しない。
+- スクロールイベントで頻繁に `setState` を呼び出さない。
+- アンマウント時や条件の変更時には、タイムアウト、リクエスト、購読、アニメーションをクリーンアップする。
+- マウント状態の確認だけでは、別のクエリやアカウントの古いデータを防げない。`AbortController`、リクエストのバージョン、セッションリースのいずれかを使用すべきである。
+- 処理順序や安全性に関わる依存関係がある初期化タスクは、必ず明示的に直列実行する。互いに無関係なタスクは並列実行してよい。
 
-- State は、それを必要とする最小で安定した owner に置きます。
-- 1 画面だけの input state を global Context へ上げません。
-- props または既存 state から直接導出できる 2 つ目の state を保存しません。
-- collection update 時に変更のない item の reference を保ち、list 全体の不要な再構築を避けます。
-- 以前の値に依存する concurrent update は functional state update を使用します。
+### 8.5 画像、ファイル、アニメーション、キャッシュ
 
-### Context
+- リストのサムネイルには、表示サイズに合ったアセットを使用する。
+- リモート画像では、`resizeMode` と、幅・高さまたはアスペクト比を明示する。
+- スクロール中に base64 や大きなオブジェクトを繰り返し生成したり、同期的に画像を処理したりしない。
+- 画像の前処理、切り抜き、圧縮によって、押下フィードバックを妨げない。
+- ファイル形式を判定するだけなら、必要最小限のヘッダーを読み取る。
+- ファイルハンドル、一時ファイル、オブジェクト URL は、ライフサイクルに応じて必ず解放する。
+- 大きな画像をアニメーションで拡大縮小する場合は、transform の使用を優先する。
+- 連続するアニメーションは、UI スレッドやネイティブスレッドでの実行を優先し、毎フレームの React の状態更新に依存させない。
+- アニメーションの開始、キャンセル、素早い連続タップ、アンマウントの各場面で、動作を明確に定める。
+- ジェスチャーのコールバックで、オブジェクト、タイマー、リクエストを無制限に生成しない。
+- 視差効果や動きを減らす設定には、プロジェクトで承認された代替動作で対応する。
+- キャッシュには、管理責任を持つ箇所、キー、容量またはクリーンアップ条件を必ず定める。
+- ユーザー単位のキャッシュはユーザーごとに分離し、ログアウトやアカウント切り替えの際に削除または無効化する。
+- API レスポンスを、モジュール単位の Map や Context に無制限に蓄積しない。
+- blob、base64、画像、ファイルハンドル、大量のログを、React の状態に長期間保持してはならない。
 
-- Context を意味と update frequency で分割し、1 つの大きな Context で無関係な画面を再 render しません。
-- Provider value の action / object は、render 間の reference stability に実際の価値がある場合だけ memoize します。
-- 特に `useSyncExternalStore` の external store では、公開 snapshot が変わらないとき reference を安定させます。
-- Context に token、大きな list cache、高頻度 animation value を持たせません。
+### 8.6 起動、ナビゲーション、プロファイリング
 
-### `memo`、`useMemo`、`useCallback`
+- 起動時に完了を待つタスクは、初期画面の正しさを左右するものだけにする。
+- フォント、認証状態の復元、必要な設定の依存関係を明確にする。
+- ネイティブのスプラッシュ画面は、アプリが最初のフレームを表示できるようになるまでの間だけ残す。
+- ルートの Provider の数と value の更新を管理し、ルート層ですべての feature のデータを購読しない。
+- 初期画面で使わない大きなモジュールを遅延読み込みするかどうかは、バンドルと初期画面の計測結果に基づいて決める。
+- ページ切り替え時に、不適切な key、条件による Root の再構築、Provider の重複によって、ツリー全体が再マウントされる実装にしてはならない。
+- 描画、スクロール、アニメーションフレーム、高頻度のリスナーで、コンソールログを出力しない。
+- 本番環境に、負荷が高いデバッグログやデータ漏えいにつながるおそれのあるデバッグログを残さない。
 
-これらは性能 tool であり、code format 要件ではありません。
+プロファイリングの手順：
 
-使用が適切な場合：
+1. 再現可能な手順、データ量、デバイス、ビルド種別を定める。
+2. JS フレーム、UI フレーム、ネットワーク、画像、ネイティブモジュール、メモリのどこに問題があるかを判断する。
+3. DevTools、プラットフォームのプロファイラー、プロジェクトの監視ツールを使い、判断の根拠を得る。
+4. 変更前の基準値を記録する。
+5. 一度に変更する主要な変数は 1 つだけにする。
+6. 同じ条件で再計測し、正しく動作することと、低性能デバイスでリグレッションがないことを確認する。
+7. 必要な性能上の許容上限と受け入れ確認の方法を、プロジェクト固有規約に記載する。
 
-- profiling で value 計算が高コストだと確認できた
-- reference stability が `memo` child、Context value、effect、native subscription の実際の contract である
-- `FlatList` の `renderItem`、footer、empty component が reference 変更により明確な追加処理を起こす
-- data conversion が多数 item に新 object を作り、frame time に実際に影響する
+最終確認では、少なくとも初期画面、高速スクロールと逆方向のスクロール、更新と追加読み込みの並行実行、画像の多いページ、キーボード表示中のスクロール、Modal とナビゲーションの画面遷移、バックグラウンドからの復帰、長時間使用後のメモリ使用量の推移を検証する。
 
-使用すべきでない場合：
-
-- 計算が単純な property read または短い array operation
-- memo boundary がなく、reference stability が処理を削減しない
-- dependency がほぼ毎 render 変わる
-- lint を消す、または「optimize されて見える」ためだけ
-- custom comparator が再 render より複雑、または誤った結果を返しやすい
-
-`React.memo` は pure component だけに使用します。custom comparison は rendering / interaction に影響するすべての props を扱い、性能根拠と test を持たせます。callback または object 変更を無視して stale UI を作りません。
-
-## 大規模リストと virtualization
-
-### Component の選択
-
-- 短く、増えないことが確実な content は `ScrollView` または `map` を使えます。
-- 長い list、paginated list、dynamic data は `FlatList` / `SectionList` または project-approved virtual list を使います。
-- `ScrollView` で大量 item を一度に render しません。
-- layout 作業を避けるために同方向 `ScrollView` 内へ virtual list を nest しません。
-
-### Key と item reference
-
-- `keyExtractor` は backend または local model の stable ID を使います。
-- array index、display copy、毎 render 新規生成する value を key にしません。
-- pagination append は stable ID で deduplicate し、変更のない item reference を維持します。
-- delete、block、like などの local patch は対象 item だけを update し、無関係な page cache を再構築しません。
-
-### `renderItem` と `extraData`
-
-- `renderItem` の責務を集中させ、API、expensive parse、unbounded data transformation を中で行いません。
-- item に渡す object と handler の不要な再生成を避けますが、reference stability のためだけに明確性を犠牲にしません。
-- `extraData` は item に本当に影響する最小 state だけを含み、毎 render 変わる大 object を渡しません。
-- 高コストな item view-model conversion を data adapter、selector、または根拠ある memoization boundary へ移します。
-
-### `getItemLayout`
-
-- item size が固定または正確に計算できる場合だけ使用します。
-- offset に separator size を含めます。
-- dynamic-height list に不正確な `getItemLayout` を設定して optimize したように見せません。
-- fixed-size carousel、picker、規則的 row list では優先的に検討します。
-
-### Window parameter
-
-`initialNumToRender`、`maxToRenderPerBatch`、`updateCellsBatchingPeriod`、`windowSize`、`removeClippedSubviews` は次に基づいて profiling で調整します。
-
-- first viewport height
-- item cost
-- target device
-- fast scroll 中の blank-window risk
-- memory pressure
-- platform difference
-
-別 App の「汎用最適値」をコピーしません。
-
-### Pagination と Refresh
-
-- `onEndReached` は idempotent にし、複数回呼ばれて duplicate request を開始しません。
-- request 前に loading lock を同期的に設定し、次の React render を待って concurrency を防ごうとしません。
-- refresh、initial load、load-more の相互排他ルールを定義します。
-- stale closure ではなく最新 cache から cursor を読みます。
-- late response は state 書き込み前に request version、query key、cancellation signal を検証します。
-- unmount、filter change、account switch 後に old response が新画面へ書き込みません。
-- 最終 item 削除後に next page から補充するかを定義し、request loop を作りません。
-
-## 非同期処理と main thread
-
-- 高コストな同期計算を render、scroll handler、press feedback と同じ frame に置きません。
-- precompute、pagination、pure data layer への移動が可能な処理を item ごとに繰り返しません。
-- scroll event で頻繁に `setState` せず、stable threshold、native/UI-thread animation、throttling strategy を優先します。
-- unmount または条件変更で timeout、request、subscription、animation を cleanup します。
-- `AbortController`、request version、session lease で無効な非同期 commit を防ぎます。mounted の確認だけでは query / account をまたぐ stale data を防げません。
-- 独立した initialization task は並行できますが、順序または security dependency がある task は明示的に serial 実行します。
-
-## 画像とファイル
-
-- list thumbnail は表示 size に合う resource を使い、original large image を download して scale だけに依存しません。
-- project-approved image cache、placeholder、error fallback を使います。
-- remote image に `resizeMode`、width / height、aspect ratio を定義し、layout shift を減らします。
-- scroll 中に base64、大 object、synchronous image processing を繰り返し作りません。
-- image preprocessing、crop、compression は submit 前または background stage で行い、press feedback を block しません。
-- file type 判定では必要最小限の header だけを読み、大 file 全体を JavaScript memory に読み込みません。
-- lifecycle に従い file handle、temporary file、object URL を release / cleanup します。
-- large image の animation は、毎 frame source width / height を変えて再 crop せず transform を優先します。
-
-## Animation と Gesture
-
-- project unified animation infrastructure と motion Token を再利用します。
-- UI / native thread で実行可能な continuous animation を、毎 frame の React state update に依存させません。
-- animation start、cancel、rapid repeated press、component unmount の挙動を定義します。
-- transition 中に large-data conversion、bulk log write、large component tree rebuild を同期実行しません。
-- Gesture callback で unbounded object、timer、request を作りません。
-- reduce-motion mode では project-approved fallback を使います。
-
-## Startup と Navigation
-
-- startup では first screen の正しさに必要な task だけを block します。
-- font、Auth restore、required configuration などの dependency order を明確にし、無関係な task は defer または parallelize します。
-- Native Splash は App が valid first frame を render できない間だけ保持し、個別 screen から制御しません。
-- Root Provider 数と value update を制御し、root で全 feature data を subscribe しません。
-- 大きな非 first-screen module の lazy load は bundle と first-screen measurement から決定します。
-- incorrect key、conditional Root rebuild、duplicate Provider により画面切り替えで tree 全体を remount しません。
-
-## Cache と Memory
-
-- Cache は owner、key、capacity または cleanup condition を持ちます。
-- user-scoped cache を user ごとに隔離し、logout / account switch 時に clear または invalidate します。
-- module-level Map または Context に API response を無制限に蓄積しません。
-- list pagination は retained page、refresh replacement、deletion behavior を定義します。
-- blob、base64、image、file handle、large log を React state に長期保持しません。
-- AppState transition または memory warning で resource を release するかは project-specific strategy が決定します。
-
-## Log と debug code
-
-- render、scroll、animation frame、高頻度 listener から console log を出しません。
-- Production build に明確な性能コストまたは data leak のある debug log を残しません。
-- project-approved performance instrumentation を使い、無効化しても business behavior を変えないようにします。
-
-## Profiling フロー
-
-jank、slow startup、memory growth、list blank window がある場合：
-
-1. 再現 step、data size、device、build type を定義。
-2. JS frame、UI frame、network、image、native module、memory のどれが原因か判断。
-3. React Native DevTools、platform profiler、project monitoring で根拠を取得。
-4. 変更前 baseline を記録。
-5. 1 回に 1 つの主要変数だけを変更。
-6. 同じ scenario で再測定し、correctness と low-end device regression を確認。
-7. 必要な budget と acceptance method を project-specific rule に記録。
-
-性能結論は release または near-release build から得ます。Development mode は診断用であり、最終 metric 用ではありません。
-
-## 性能テストと受け入れ確認
-
-automated test が保護するもの：
-
-- pagination lock と deduplication
-- stale response の reject
-- Context snapshot reference-stability contract
-- cleanup と resource release
-- large-data selector / view model の correctness
-
-automated test は real-device profiling を代替しません。最終確認には最低限次を含めます。
-
-- first-screen entry
-- fast forward / reverse scroll
-- refresh と load-more の concurrency
-- image-dense screen
-- keyboard open 中の input と list scroll
-- Modal / navigation transition
-- background restoration
-- prolonged use 中の memory trend
-
-## Review checklist
-
-- [ ] optimization 前に再現可能な問題または明示的 budget がある。
-- [ ] release または near-release build で性能を検証した。
-- [ ] State が最小で適切な owner にある。
-- [ ] Context が無関係な高頻度 update を起こさない。
-- [ ] memoization に実際の boundary と正しい dependency がある。
-- [ ] list key が stable で、pagination / refresh に synchronous lock がある。
-- [ ] stale response が新 query、新 screen、新 account を上書きしない。
-- [ ] large image、file handle、timer、listener、animation を cleanup する。
-- [ ] high-frequency path に log または高コスト同期処理がない。
-- [ ] iOS、Android、対象 low-end device tier を検証した。
-
-## 参照基準
-
-- [React Native Performance Overview](https://reactnative.dev/docs/performance)
-- [React Native Profiling](https://reactnative.dev/docs/profiling)
-- [React Native FlatList](https://reactnative.dev/docs/flatlist)
-- [React Native ScrollView](https://reactnative.dev/docs/scrollview)
+---

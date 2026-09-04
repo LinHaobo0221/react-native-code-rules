@@ -1,71 +1,70 @@
-# 05 Figma ワークフロー
+# 5. Figma の確認とページ実装のルール
 
-> 本文書は Figma から React Native / Expo への読み取り、分析、実装、受け入れ確認フローを定義します。具体的な Figma ファイル、Library、Token、フォントはプロジェクト固有規約で定義します。
+### 5.1 適用条件
 
-## 適用条件
+次のいずれかに該当する場合は、Figma ワークフローを適用する。
 
-ユーザーが Figma URL、node、スクリーンショットを提供した場合、またはデザインから画面を作成・変更するよう明示した場合、本書を適用します。
+- ユーザーが Figma の URL を提示した
+- ユーザーが Figma のノードを提示した
+- ユーザーがデザインのスクリーンショットを提示した
+- ユーザーがデザインに沿ったページの作成または変更を明示的に求めた
 
-Figma が対象外のタスクでは、node 読み取りと視覚 mapping の手順は適用しませんが、アセット、コンポーネント責務、native 品質ルールは引き続き参考にします。
+### 5.2 開始前の確認
 
-## 開始前
+ページのコードを生成する前に、次の事項を必ず確認する。
 
-次を確認します。
+1. 共通規約とプロジェクト固有規約を全文読んでいること。
+2. 現在の Expo / React Native の設定と、使用を許可されている依存パッケージ。
+3. 現在のアプリのトークン、フォント、アイコン、既存コンポーネントの公開エントリーポイント。
+4. ページが属する feature とルートの階層。
+5. ユーザーが求めるページの状態、インタラクションの範囲、扱うデータの範囲。
 
-1. 共通規約とプロジェクト固有規約をすべて読み終えている
-2. 現在の Expo / React Native 設定と許可された依存関係
-3. 現在の App の Token、フォント、icon、既存コンポーネント入口
-4. 画面が属する feature と route 階層
-5. 要求された画面状態、操作範囲、データ境界
+### 5.3 Figma を確認する際の必須手順
 
-確認が終わる前に画面コードの生成を開始しません。
+#### 手順 1：起点となるノードを確認する
 
-## Figma の必須読み取り順序
+ユーザーが提示した画面、フレーム、セクションの全体を起点とする。最上位のスクリーンショットだけですべての実装を判断してはならない。
 
-### 1. 入口 node を読む
+最初に確認する内容：
 
-提供された screen、frame、section 全体を入口として扱い、最上位スクリーンショットだけで実装に十分だと判断しません。
+- メタデータとノードツリー
+- フレームの寸法と Auto Layout
+- 直下の子ノード
+- コンポーネントのインスタンス
+- 非表示のレイヤー
+- 変数とスタイルの参照
+- アセットとベクターグループ
 
-最初に確認するもの：
+#### 手順 2：役割ごとに分類する
 
-- metadata / node tree
-- frame size と Auto Layout
-- direct child
-- component instance
-- hidden layer
-- variable / style reference
-- asset と vector group
+主要なノードを次のように分類する。
 
-### 2. 責務別に分類する
+- ページの外枠と背景
+- セーフエリア、ヘッダー、ナビゲーション
+- タブ、セグメント
+- セクション見出し
+- カード、リストの行
+- ボタン、入力欄、ピッカー
+- モーダル、シート、ダイアログ
+- アイコン、SVG グループ
+- 画像、イラスト、背景アセット
+- グラフ、可視化要素
+- システム UI
 
-重要 node を次へ分類します。
+#### 手順 3：主要な子ノードを詳しく確認する
 
-- 画面 shell と背景
-- safe area / header / navigation
-- tab / segment
-- section header
-- card / list row
-- button / input / picker
-- modal / sheet / dialog
-- icon / SVG group
-- image / illustration / background asset
-- chart / visualization
-- system UI
+次の内容を把握できるまで、子ノードを詳しく確認する。
 
-### 3. 重要な子 node を詳しく読む
+- 寸法と制約
+- パディング、要素間の間隔、配置
+- フォントと行の高さ
+- 塗り、線、角丸、影
+- バリアントとコンポーネントのプロパティ
+- クリッピング、マスク、z-index、はみ出しの処理
+- アセットの種類とエクスポートする範囲
+- デフォルト、選択済み、無効、読み込み中、エラーなどの状態
 
-実装へ影響する node は、次の事実を確認できるまで読み込みます。
-
-- size と constraint
-- padding、gap、alignment
-- typography と line height
-- fill、stroke、radius、shadow
-- variant / component property
-- clipping、mask、z-index、overflow
-- asset type と export boundary
-- default、selected、disabled、loading、error などの状態
-
-次の複合 control は内部要素を個別に確認します。
+次の複合コントロールは、内部の要素を個別に確認しなければならない。
 
 - TextField / SearchField
 - Select / Dropdown
@@ -74,134 +73,161 @@ Figma が対象外のタスクでは、node 読み取りと視覚 mapping の手
 - Card action
 - Chart tooltip / legend
 
-外枠だけを読み、近似 icon や推測した内部 spacing を使いません。
+外枠だけを見て似たアイコンで代用したり、内部の余白を推測したりしてはならない。
 
-### 4. Node 読み取り一覧を作成する
+#### 手順 4：確認したノードの一覧を作成する
 
-コード変更前に、最低限次を含む「Figma 子 node 読み取り一覧」を出力または記録します。
+コードを変更する前に、次の内容を必ず記録する。
 
-- 入口 node ID と name
-- 読み取った主要 child node の ID と name
-- 各 node に対応するコード配置先
-- export 予定の SVG / PNG
-- 意図的に省略した node と理由
+- 起点となるノードの ID と名前
+- 確認した主要な子ノードの ID と名前
+- 各ノードを実装するコードの配置先
+- エクスポート予定の SVG / PNG アセット
+- 確認対象から外したノードとその理由
 
-tool から node へアクセスできない、または権限がない場合、fallback の根拠、使用したスクリーンショット、未確認の事実を説明します。
+ツールでノードにアクセスできない場合や権限が不足している場合は、代替手段で実装する際の根拠、使用したスクリーンショット、未確認の内容を必ず説明する。
 
-## デザインからコードへの mapping
+### 5.4 Figma からコードへの実装フロー
 
-### Auto Layout
+```text
+Figma の起点ノード
+  ↓
+ノードツリー、寸法、レイアウトを確認する
+  ↓
+ページ内の役割ごとに分類する
+  ↓
+主要な複合ノードを詳しく確認する
+  ↓
+ノードとファイル／コンポーネント／アセットの対応を記録する
+  ↓
+トークン、コンポーネント、フォント、インタラクションを対応付ける
+  ↓
+feature page / UI を実装する
+  ↓
+iOS / Android で見た目とインタラクションの受け入れ確認を行う
+```
 
-- Auto Layout は原則として flex の関係へ mapping します。
-- hug、fill、fixed、min/max constraint から width / height の挙動を判断します。
-- 通常 layout で表現できる構造を大量の absolute positioning で再現しません。
-- absolute は明示的な重なり、badge、装飾、overlay だけに使用します。
+### 5.5 Auto Layout のマッピング
 
-### Component と Variant
+- Auto Layout は、まず Flexbox の関係として表現する。
+- `hug`、`fill`、`fixed`、`min/max constraint` に基づき、幅と高さがどのように決まるかを判断する。
+- 通常のレイアウトで表現できる構造を、大量の絶対配置で再現しない。
+- 絶対配置は、重なり、バッジ、装飾、オーバーレイが明確に必要な場合に限る。
 
-- 現在の App の既存コンポーネントを先に検索し、構造と意味が一致するか確認します。
-- Figma component property を有限で type-safe な props へ mapping します。
-- Variant は `variant`、`size`、`tone`、`state` などの enum を優先します。
-- 構造が明らかに異なる既存コンポーネントを、再利用のために無理に使いません。
-- 新規コンポーネントは原則として現在の feature に置き、feature 間で安定した再利用が確認できてから shared へ移します。
+### 5.6 Component と Variant のマッピング
 
-### Variables と Token
+- まず現在のアプリの既存コンポーネントを検索し、構造と意味が一致するかを確認する。
+- Figma のコンポーネントプロパティは、取り得る値を限定した型安全な props に対応付ける。
+- Variant は、原則として `variant`、`size`、`tone`、`state` などの列挙型に対応付ける。
+- 「既存コンポーネントを再利用するため」という理由で、明らかに異なる構造を無理に受け入れない。
+- 新規コンポーネントは、原則として現在の feature に配置する。
+- feature をまたいで安定して再利用できることを確認してから、`shared` に移す。
 
-- Figma variables は本共通 package の固定値ではなく、現在の App の Token へ mapping します。
-- Figma が alias を使用する場合、コードも raw color より semantic Token を優先します。
-- Figma と code Token に drift がある場合、どちらかを黙って選ばず、差異を報告してプロジェクトの事実源に従います。
+### 5.7 Variables とトークン
 
-### Typography
+- Figma Variables は、共通ライブラリの固定値ではなく、現在のアプリのトークンに対応付ける。
+- Figma でエイリアスを使用している場合は、コードでも生の色値ではなく、意味を持つトークンをできるだけ使用する。
+- Figma とコードのトークンにずれが見つかった場合、説明せずに一方を採用してはならない。
+- 差異を説明し、プロジェクトで判断の基準としている情報に従って対応しなければならない。
 
-- テキスト言語、font coverage、Figma fallback を確認します。
-- 現在の App が読み込んだ実際の `fontFamily` を選びます。
-- font size、line height、letter spacing、weight をまとめて mapping します。
-- 承認なしに font package または asset を追加しません。
+### 5.8 タイポグラフィとレイアウトの数値
 
-### Layout 値
+- テキストの言語、フォントの対応文字、Figma でのフォールバックを確認する。
+- アプリに読み込み済みのフォントから、実際に使用する `fontFamily` を選ぶ。
+- フォントサイズ、行の高さ、文字間隔、フォントウェイトを一緒に対応付ける。
+- フォントのパッケージやアセットを独断で追加しない。
+- Figma の数値は、原則としてそのまま React Native の論理ピクセルに対応付ける。
+- フォント描画、ネイティブコントロール、プラットフォームの動作による差異に根拠がある場合に限り、プラットフォームごとの微調整を行い、理由を記録する。
 
-Figma の値は、既定では同じ数値の React Native logical pixel に mapping します。font rendering、native control、platform behavior により根拠のある差異が生じる場合だけ platform 調整し、理由を記録します。
+### 5.9 画像、SVG、アセットの命名
 
-## 画像と SVG
+- 機能を示すアイコン、小さな状態表示、拡大縮小可能なベクター画像は、ローカル SVG としてのエクスポートを優先する。
+- 写真、複雑なイラスト、バナー、ビットマップのテクスチャには、適切な倍率のローカル画像を使用する。
+- Figma で組み立て済みの複雑なベクターグループは、まとめてエクスポートすることを優先する。
+- 構造が単純で、実行時に動的な変形または色の変更が必要な場合に限り、SVG を手書きする。
+- プロジェクトで明示的に許可されていない限り、ネットワーク URL、base64、サードパーティ製の類似アイコンで正式なローカルアセットを代用しない。
+- 低解像度のスクリーンショットを本番用アセットとして使用しない。
+- 元のデザインが分割できないビットマップでない限り、アクセシビリティのためにテキストとして扱うべき文字を画像に埋め込まない。
 
-- 機能 icon、小さな状態 graphics、拡大可能な vector は local SVG を優先します。
-- 写真、複雑な illustration、banner、bitmap texture は適切な倍率の local bitmap を使用します。
-- Figma で完成している複雑な vector group は、コードで path を推測せず、全体 export を優先します。
-- runtime で形状や色を動的に変更する必要があり、かつ構造が単純な場合だけ SVG を手書きします。
-- プロジェクトが明示的に許可しない限り、正式な local asset を network URL、base64、近似した third-party icon で置き換えません。
-- 低解像度スクリーンショットを production asset にしません。
-- 元のデザインが分離不能な bitmap でない限り、accessibility text を画像へ焼き込みません。
+推奨例：
 
-アセットは用途が分かる名前にします。例：
-
-~~~text
+```text
 icon-arrow-left.svg
 profile-avatar-placeholder.png
 empty-history-illustration.svg
-~~~
+```
 
-hash、random string、export tool の一時名、用途不明の `image-1.png` を残しません。tool が生成した一時 asset は同じタスク内で rename し、未使用 asset は削除します。
+使用してはならない名前：
 
-## System UI
+- ハッシュ値
+- ランダムな文字列
+- エクスポートツールが付けた一時的な名前
+- `image-1.png`
+- 用途を判断できないファイル名
 
-Figma 内の次の要素は、既定では業務 UI ではなく端末環境です。
+ツールが生成した一時アセットは、同じタスク内で必ず名前を変更する。使用していないアセットは削除すべきである。
 
-- iOS Home Indicator
-- status bar の時刻、battery、signal、Wi-Fi
-- Android system navigation bar
-- device frame と画面角 mask
+### 5.10 システム UI
 
-偽の system element を描画せず、safe area、StatusBar、system background を正しく処理します。ユーザーが marketing mockup または device presentation を明示的に求めた場合だけ例外です。
+次の要素は、原則としてデバイス環境の一部であり、アプリ側で実装する UI ではない。
 
-## 操作意図
+- iOS のホームインジケーター
+- ステータスバーの時刻、バッテリー、電波、Wi-Fi
+- Android のシステムナビゲーションバー
+- デバイスの外枠と画面の角丸マスク
 
-デザインと prototype から次を判断します。
+システム要素を模した UI を手動で描画してはならない。ページではセーフエリア、StatusBar、システムの背景を正しく処理しなければならない。例外は、マーケティング用のモックアップやデバイスの紹介画像を作成する場合に限る。
 
-- tap target と hit area
-- Tab / Segment 切り替え
-- input focus、placeholder、validation 状態
-- sheet / modal の open と close
-- loading / empty / error / disabled 状態
-- scroll 領域と fixed 領域の境界
-- navigation forward、back、close の違い
+### 5.11 インタラクションの意図
 
-Figma が静的状態だけを示す場合、実際の業務ルールを独自に作りません。タスクが許可する最小限の local demonstration state を実装し、placeholder 挙動を明記します。
+デザインとプロトタイプから、次の内容を必ず判断する。
 
-## 実装前の出力
+- タップ対象とタップ可能な範囲
+- Tab / Segment の切り替え
+- 入力欄のフォーカス、プレースホルダー、バリデーション
+- Sheet / Modal の開閉
+- 読み込み中、データなし、エラー、無効の状態
+- スクロール領域と固定領域の境界
+- ナビゲーションで進む、戻る、閉じる操作の違い
 
-コードを書く前に、簡潔なディレクトリ mapping を示します。
+Figma に静的な状態しか示されていない場合：
 
-1. 適用する主要プロジェクト規約
-2. 作成または変更するファイルの full path
+- 実際の業務ルールを独自に作らない。
+- タスクの範囲で許可されたローカルの表示状態は実装してよい。
+- 実際のネットワーク通信、永続化、認証、業務フローに独断で接続しない。
+- どの動作がまだ仮実装なのかを明示する。
+
+### 5.12 実装前の説明と見た目の受け入れ確認
+
+コードを書く前に、次の内容を示すべきである。
+
+1. 適用される主要なプロジェクトルール
+2. 作成または変更するファイルのフルパス
 3. 各ファイルの責務
-4. Figma 子 node 読み取り一覧
-5. 再利用予定の既存コンポーネント、Token、asset
-6. 既知の不確実性と保守的な仮定
+4. 確認した Figma 子ノードの一覧
+5. 再利用予定の既存コンポーネント、トークン、アセット
+6. 既知の不確実な点と、安全側に立った仮定
 
-実際のファイルはこの mapping に従います。実装中に計画を変更した場合は mapping も更新します。
-
-## 視覚的な受け入れ確認
-
-実装後、最低限次を確認します。
+実装後は少なくとも次を確認する。
 
 - 構造と階層
-- padding、gap、alignment
-- font size、line height、weight、letter spacing
-- color、stroke、radius、shadow
-- 画像 crop と SVG size
-- scroll、fixed footer、safe area
-- press、focus、selected、disabled などの状態
-- 小さい画面と長文
-- iOS / Android の native 表現
+- パディング、要素間の間隔、配置
+- フォントサイズ、行の高さ、フォントウェイト、文字間隔
+- 色、線、角丸、影
+- 画像の切り抜きと SVG の寸法
+- スクロール、固定フッター、セーフエリア
+- 押下、フォーカス、選択済み、無効の状態
+- 小さい画面と長いテキスト
+- iOS / Android のネイティブ環境での表示と動作
 
-Web は route 到達と基本 rendering の迅速な確認に使えますが、視覚、keyboard、safe area、Modal、transition の native 受け入れ確認を代替しません。
+Web はルーティングや基本的な描画の確認に補助的に使用してよい。ただし、iOS / Android での見た目、キーボード、セーフエリア、Modal、画面遷移の受け入れ確認を代替してはならない。
 
-## デリバリー説明
-
-デリバリー時に次を説明します。
+成果物とともに説明する内容：
 
 - 再現した内容
-- Figma との残存差異
-- asset 不足、platform behavior、dependency 制約、design 不足など差異の理由
-- 検証した platform と state
-- ユーザー判断が必要な Token、font、motion、業務 behavior
+- Figma との間に残っている差異
+- 差異の理由：アセット不足、プラットフォームの動作、依存パッケージの制約、デザインの不足
+- 検証済みのプラットフォームと状態
+- ユーザーの判断がまだ必要なトークン、フォント、モーション、業務上の動作
+
+---

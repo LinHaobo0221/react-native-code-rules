@@ -1,344 +1,195 @@
-# 10 セキュリティとプライバシー
+# 10. セキュリティとプライバシーのルール
 
-> 本文書は React Native / Expo App の共通 security / privacy 最低基準を定義します。リスクベースの規約であり、プロジェクトの threat model、backend authorization、法令遵守、正式な security assessment を代替しません。
+本節では、セキュリティとプライバシーに関するルールを網羅する。
 
-## Security の責務境界
+### 10.1 責任範囲
 
-- Mobile client はユーザーが制御できる device 上で動作し、本当に非公開であるべき server-side secret を保持できません。
-- backend は identity、permission、resource ownership、transaction、business fact の最終決定者です。
-- Button を隠す、local state を変更する、route を確認する処理は backend authorization を代替しません。
-- TypeScript type は実際の network JSON を検証しません。sensitive contract は使用・永続化前に runtime validation が必要です。
-- Security control は App、backend、third-party SDK、storage、network、release configuration 全体を対象にし、UI code だけを確認しません。
-- high-risk App は business、data type、threat model に基づいて要件を引き上げ、OWASP MASVS control の適用性を記録します。
-
-## 各プロジェクトが定義する security 事実
-
-各 App は `app-specific.md` に次を記録します。
-
-- data classification と sensitive field 一覧
-- Auth type、token / session lifecycle、backend contract
-- protected storage、通常 KV、database、file cache の選択
-- API origin、許可する external origin、development HTTP 例外
-- deep link / universal link / app link allowlist
-- WebView の許可と制限
-- permission 一覧と request timing
-- analytics、crash report、logging、third-party SDK の data scope
-- logout、account switch、account closure、data deletion 方針
-- backup、device migration、biometric 方針
-- security test baseline と owner process
-
-これらが決定するまで、実 Auth、永続化、sensitive logging、任意 external URL、third-party data upload を独自に実装しません。
-
-## データ分類と最小化
-
-最低限次へ分類します。
-
-- Public：公開表示 content
-- Internal：公開すべきでないが sensitivity が低い runtime 情報
-- Personal Data：個人を識別または関連付けできる data
-- Sensitive Personal Data：health、financial、precise location、identity document など高感度 data
-- Secret：password、token、verification code、private key、credential
-
-必須ルール：
-
-- 機能に本当に必要な data だけを collect、request、store、transmit します。
-- 各 field は owner、purpose、storage location、retention period、deletion condition を持ちます。
-- 「将来使うかもしれない」という理由で早期に permission を要求したり data を収集したりしません。
-- upload 不要で device 内処理が可能なら、local processing の方が privacy goal に適するか評価します。
-- third-party SDK に渡す data も本 App の責任範囲です。
-
-## App bundle と設定
-
-- App bundle、JavaScript bundle、`app.json`、asset file、`EXPO_PUBLIC_*` value は読み取り可能とみなします。
-- server private key、database credential、long-lived signing secret、administrator token を client に hard-code しません。
-- API base URL、public project ID は public configuration にできますが、本当の secret は server または controlled build service に残します。
-- `.env` は configuration management であり、client bundle に入った value を secret にはしません。
-- source map、debug symbol、build log、CI artifact への access は release process で管理します。
-
-## ローカルストレージ
-
-### 選択原則
-
-- persistence 不要の data は memory だけに保持します。
-- 小さい token、key、secret は project-approved platform protected storage を使います。
-- access が容易という理由で secret を通常 KV、SQLite、FileSystem に保存しません。
-- protected storage は小さい value 向けです。large object、list、file は dedicated storage を使い、sensitivity に応じて encrypt または disk 保存を避けます。
-- screen component は secure storage を直接呼ばず、controlled adapter または coordinator を使います。
-
-### Protected storage
-
-Expo SecureStore または別 platform store の利用時に評価します。
-
-- iOS Keychain accessibility level
-- Android backup / restore behavior
-- device-only と device migration requirement
-- uninstall、reinstall、system restore の差異
-- biometric / `requireAuthentication` が transparent read の UX に与える影響
-- config plugin、native configuration、EAS build
-- native read / write / delete failure
-- value size limit
-
-protected storage を失敗しないもの、または business source of truth とみなしません。backend は session が有効かを引き続き検証します。
-
-### ファイルと Cache
-
-- ユーザーが明示的に export しない限り、sensitive file を public Downloads、photo library、他 App が access できる directory へ書きません。
-- temporary image、attachment、crop result は cleanup strategy を持ちます。
-- logout、account switch、user deletion 後に、project policy に従って user-scoped cache を clear / invalidate します。
-- file name、metadata、thumbnail、log も sensitive information を漏らす可能性があります。
-- backup policy は data classification に従い、secret または sensitive cache を意図せず cloud backup に含めません。
-
-## Token Auth の共通 invariant
-
-App が access / refresh token を使用する場合、最低限次を満たします。具体的 token type、storage、expiration は project architecture が決定します。
-
-### 単一の事実源
-
-- runtime session は 1 つの coordinator / store を事実源にします。
-- Provider、screen、API module が個別に変化する token または sign-in state を持ちません。
-- public React state は最小限の user / status summary だけを公開し、token または Authorization header を公開しません。
-
-### Persist before publish
-
-session の確立または refresh：
-
-~~~text
-response を validate
--> 必要な protected-storage write / delete を完了
--> runtime token を update
--> authenticated snapshot を publish
-~~~
-
-persistence が失敗した場合、安定して restore できない authenticated session を UI に publish しません。
-
-### Local-first logout
-
-logout または確定 invalidation：
-
-~~~text
-old session version を直ちに invalidate
--> runtime token を clear
--> unauthenticated を publish
--> local storage を非同期 cleanup
--> best-effort で backend revoke を通知
-~~~
-
-network または local delete failure によって UI を authenticated に戻しません。
-
-### Stale-result fencing
-
-- Auth request、restore、refresh、authenticated API は current session lease / version を capture します。
-- response は state、cache、storage、error の commit 前に lease を再 validate します。
-- User A の late response を User B の screen / cache に入れません。
-- stale result は internal cancellation として扱い、通常 failure toast を表示せず、新 session を変更しません。
-
-### Refresh
-
-- 1 session 内の concurrent `401` は 1 つの version-scoped refresh flight を共有します。
-- refresh flight を session 間で共有しません。
-- old access token に対する late `401` は current token と比較し、不要な連続 rotation を避けます。
-- 各 business request は明示的 retry budget を持ち、refresh を recursive にしません。
-- 通常の business `403` では auto refresh しません。
-- network、timeout、不確実な mutation failure で write operation を自動 replay しません。
-
-### Token type の分離
-
-- setup、password reset、email verification など one-time token を通常 session token から分離します。
-- one-time token を route params、URL、public Context、analytics、通常 persistent cache へ入れません。
-- 通常 API caller が任意 header で current Authorization を override できないようにします。
-
-### Runtime validation
-
-Auth response の persist 前に最低限検証します。
-
-- discriminator / required action
-- token が non-empty string
-- expiry が valid positive value
-- user ID と status が allowed value
-- response variant の field combination が mutually exclusive
-- refresh rotation result が project contract を満たす
-- current principal が予期せず置き換わらない
-
-invalid `2xx` response を success として commit しません。
-
-## ネットワークセキュリティ
-
-- Production / preview は既定で HTTPS だけを使います。
-- 明示された local development address は HTTP を許可できますが、unexpected origin へ暗黙 fallback しません。
-- API client は fixed / validated base URL を使います。
-- authenticated client は feature screen から任意 absolute URL を受けず、relative internal path を優先します。
-- token は approved API / Auth origin だけへ送ります。
-- object storage upload、external link open、third-party preview request へ App Authorization header を付けません。
-- redirect、proxy、cross-origin request で sensitive header leak を防ぎます。
-- Production TLS verification を debug configuration または custom client で無効にしません。
-- certificate pinning は threat model から判断し、certificate rotation、old App version、incident recovery も同時設計します。operation plan なしに pinning を追加しません。
-
-Request layer が提供するもの：
-
-- timeout
-- cancellation
-- stable error envelope
-- request ID
-- controlled header
-- response size または file download boundary
-
-safe retry は idempotent read と、server にすでに write 済みかもしれない mutation を区別します。
-
-## External URL、Deep Link、WebView
-
-### External URL
-
-- untrusted string は standard URL parser で parse します。
-- allowed scheme を明示し、通常 Web entry は既定で `https` だけを受け、`http` は project decision とします。
-- `javascript:`、`data:`、`file:`、unapproved custom scheme を reject します。
-- token、personal data、internal ID を third-party URL query に入れません。
-- open failure は controlled state を返し、raw exception または sensitive URL を user log に書きません。
-
-### Deep Link
-
-- scheme / host / path / params を validate します。
-- stable ID を使い、format / length limit を設けます。
-- deep link は Auth route guard、user confirmation、one-time flow token を bypass できません。
-- sensitive action を deep-link params だけから直接実行しません。
-- after-login destination は allowlist を通し、open redirect を防ぎます。
-
-### WebView
-
-WebView を許可する場合、個別に定義します。
-
-- origin allowlist
-- JavaScript enabled
-- navigation interception
-- file / camera / location permission
-- cookie と session boundary
-- injected JavaScript と message schema
-- download、upload、external navigation
-
-「Web に既存機能がある」という理由だけで任意 URL を WebView に入れません。
-
-## ファイル、画像、アップロード
-
-- system picker が返す MIME、extension、file name は untrusted metadata です。
-- upload 前に allowed file type、size、必要な magic bytes を検証します。
-- large file 全体を JavaScript memory に読み込まず、判断に必要な最小 header だけを読みます。
-- server は MIME、size、signature、ownership、upload status を再検証します。client validation は UX 改善だけです。
-- presigned URL または third-party upload origin に App bearer token を送りません。contract が明示し origin が controlled な場合だけ例外です。
-- success、failure、cancellation すべてで file handle を close します。
-- upload cancel、App background、URI permission expiry の failure behavior を定義します。
-
-## Logging、Analytics、Error reporting
-
-記録できる最小 diagnostic information：
-
-- event name
-- stable error code
-- HTTP status
-- request ID
-- platform / App version
-- personal data を含まない state transition reason
-
-記録禁止：
-
-- password、verification code
-- access / refresh / setup / reset token
-- Authorization、Cookie、protected storage value
-- complete request / response body
-- raw identity document、precise location、contacts、health data
-- unredacted email、phone、IP、external URL query
-
-third-party SDK へ入る前に transport または logging adapter で redact します。各 screen developer が手動で覚えることに依存しません。
-
-user-facing error は stack trace、SQL、internal path、token state、backend implementation を表示しません。authentication error は account enumeration を避け、rate limit は安定した一般的な「後で再試行」の意味を使います。
-
-## Permission と platform capability
-
-- permission は機能が本当に必要とする時点で request し、startup 時にまとめて要求しません。
-- request 前に実際の用途と一致する説明を提供します。
-- denied、restricted、limited、後から revoked の場合に分かりやすい fallback を用意します。
-- 拒否したユーザーへ繰り返し要求しません。
-- camera、photo library、microphone、location、notification、Bluetooth は最小 scope だけを request します。
-- iOS usage description と Android permission は実際の用途を正確に示します。
-- separate runtime を持つ background task、extension、share sheet、widget は独立した session / data access design が必要で、main App memory state を利用できると仮定しません。
-
-## プライバシー
-
-privacy design は最低限次を満たします。
-
-- Data minimization：必要な data / resource だけへ access。
-- Transparency：collection、storage、sharing、background processing を user が理解できる。
-- Consent：consent が必要な processing は同意後に開始し、third-party SDK が先に collect しない。
-- User control：user が data を manage、delete、correct し、関連 setting を revoke できる。
-- Retention：data を無期限保持せず、deletion / account closure に明確な結果がある。
-
-analytics、advertising、attribution、push、monitoring SDK の追加前に確認します。
-
-- collected field
-- default-enabled behavior
-- consent signal
-- data transfer region と third-party chain
-- device identifier
-- deletion と opt-out capability
-- native permission と package supply-chain risk
-
-## Clipboard、Screenshot、Share
-
-- token、verification code、sensitive field を自動で Clipboard へ copy しません。
-- Clipboard content は system または別 App が読めるため、content と retention を制限します。
-- sensitive screen で screenshot / recording を禁止するかは、platform limit、usability、support flow を考慮する project risk decision です。
-- system Share Sheet には user が明示選択した最小 content だけを渡します。
-- file share 前に metadata と cache location が追加情報を漏らさないか確認します。
-
-## 依存関係と supply chain
-
-- dependency を明示宣言し、review 可能な version に固定します。
-- new dependency の native permission、network behavior、maintenance status、transitive dependency を確認します。
-- lockfile を commit します。
-- security update は test / release workflow を通し、review なしで major version を business branch から直接 upgrade しません。
-- untrusted source の install script、binary、copied code を実行しません。
-- unmaintained SDK、known vulnerability、excessive permission には replacement plan を作ります。
-
-## セキュリティテスト
-
-機能範囲に応じて扱います。
-
-- protected storage read / write / delete failure
+- モバイルクライアントは、ユーザーが制御できるデバイス上で動作する。外部に公開できないサーバー側の秘密情報を保持してはならない。
+- ユーザーの識別、権限、リソースの所有者、取引、業務データの正しさは、バックエンドが最終的に判断する。
+- ボタンを隠す、ローカルの状態を変更する、ルートを確認するといった処理では、サーバー側の認可を代替できない。
+- TypeScript の型だけでは、実際にネットワークから届く JSON を検証できない。機密性に関わるデータの契約は、使用・永続化の前に実行時の検証が必要である。
+- セキュリティ対策は、アプリ、バックエンド、サードパーティ SDK、ストレージ、ネットワーク、リリース設定を必ず対象に含める。
+
+### 10.2 データの分類と最小化
+
+少なくとも次の区分を設ける。
+
+- Public：公開表示する情報
+- Internal：公開すべきではないが、機密性は比較的低い情報
+- Personal Data：個人を識別できる、または個人に関連付けられるデータ
+- Sensitive Personal Data：健康、財務、正確な位置情報、本人確認書類など、機密性の高いデータ
+- Secret：パスワード、トークン、認証コード、秘密鍵、認証情報
+
+次の事項を必ず守る。
+
+- 機能に本当に必要なデータだけを収集、要求、保存、送信する。
+- データの各フィールドに、管理責任を持つ主体、用途、保存先、保持期間、削除条件を定める。
+- 「後で使うかもしれない」という理由で、事前に権限を要求したり、データを収集したりしない。
+- アップロードせずに、ローカルで処理を完結できるかを検討する。
+- サードパーティ SDK が受け取るデータにも、アプリ側が責任を持つ。
+
+### 10.3 バンドル、設定、ローカルストレージ
+
+- アプリのバンドル、JavaScript バンドル、`app.json`、アセットファイル、`EXPO_PUBLIC_*` は、いずれも外部から読み取れるものとして扱う。
+- 秘密鍵、データベースの認証情報、長期間使用する署名用シークレット、管理者トークンをハードコードしてはならない。
+- API のベース URL や公開プロジェクト ID は公開設定に含めてよい。秘密として保持すべき情報は、サーバー側か、管理下にあるビルドサービスに必ず置く。
+- `.env` は設定を管理するためのものであり、クライアントに組み込んだ値を秘密にできるわけではない。
+- ソースマップ、デバッグシンボル、ビルドログ、CI の成果物へのアクセス権は、リリース手順の中で管理する。
+- 永続化が不要なデータは、メモリだけに保持する。
+- 少量のトークン、鍵、シークレットには、保護されたストレージのうち、プロジェクトで承認されたものを使用する。
+- 便利だからという理由で、通常の KV、SQLite、FileSystem に秘密情報を保存してはならない。
+- ページから低レベルのセキュアストレージを直接呼び出してはならない。アクセスを管理する Adapter かコーディネーターを必ず介する。
+- ユーザーが明示的にエクスポートを開始した場合を除き、機密ファイルを公開の Downloads、写真ライブラリ、他のアプリからアクセスできるディレクトリに保存しない。
+- 一時画像、添付ファイル、切り抜いた画像には、クリーンアップ方針を必ず定める。
+- ログアウト、アカウント切り替え、削除の後は、ユーザー単位のキャッシュをプロジェクトの方針に従って削除または無効化する。
+- ファイル名、メタデータ、サムネイル、ログからも、機密情報が漏れる可能性がある。
+
+### 10.4 認証トークンの不変条件
+
+#### 正とする情報源を 1 つにする
+
+- 実行時のセッションは、1 つのコーディネーターまたはストアを唯一の情報源とする。
+- Provider、ページ、API モジュールが、それぞれ独立して変化するトークンやログイン状態を管理してはならない。
+- React の公開状態には、最小限のユーザー情報と状態の概要だけを含め、トークンや Authorization ヘッダーを公開しない。
+
+#### Persist Before Publish
+
+```text
+レスポンスを検証する
+-> 保護されたストレージへの必要な書き込みまたは削除を完了する
+-> 実行時のトークンを更新する
+-> 認証済みのスナップショットを公開する
+```
+
+永続化に失敗した場合は、確実に復元できない認証済みセッションを UI に公開してはならない。
+
+#### Local-First Logout
+
+```text
+古いセッションのバージョンを直ちに無効化する
+-> 実行時のトークンを消去する
+-> 未認証状態を公開する
+-> ローカルストレージを非同期でクリーンアップする
+-> ベストエフォートでバックエンドに失効を通知する
+```
+
+ネットワーク通信やローカルでの削除に失敗しても、UI をログイン済みの状態に戻してはならない。
+
+#### Stale Result Fencing
+
+- 認証リクエスト、セッションの復元、リフレッシュ、認証付き API 呼び出しでは、その時点のセッションリース／バージョンを取得して保持する。
+- レスポンスを状態、キャッシュ、ストレージ、エラーに反映する前に、リースを再検証する。
+- User A の遅れて届いたレスポンスを、User B のページやキャッシュに混入させてはならない。
+- 古い結果は内部的なキャンセルとして扱い、通常の失敗トーストを表示せず、新しいセッションも変更しない。
+
+#### リフレッシュ
+
+- 同じセッションで同時に発生した `401` は、そのセッションのバージョンに限定した 1 つのリフレッシュ処理を共有する。
+- 実行中のリフレッシュ処理を、別のセッションで再利用してはならない。
+- 古いアクセストークンに対する `401` が遅れて届いた場合は、まずそのトークンを現在のトークンと比較し、不要なローテーションを防ぐ。
+- 各業務リクエストにリトライの上限を明確に定め、再帰的にリフレッシュしてはならない。
+- 通常の業務処理で発生する `403` では、自動リフレッシュを行わない。
+- ネットワークエラー、タイムアウト、成否が確定していないデータ更新の失敗時に、書き込み操作を自動で再実行しない。
+
+#### トークンの種類と実行時の検証
+
+- セットアップ、パスワードリセット、メールアドレス確認などに使うワンタイムトークンは、通常のセッショントークンと分離する。
+- ワンタイムトークンを、ルートパラメータ、URL、公開 Context、分析データ、通常の永続キャッシュに含めない。
+- 通常の API 呼び出し側が、現在の Authorization ヘッダーを任意に上書きしてはならない。
+- 認証レスポンスを保存する前に、型の判別子、必要なアクション、トークンが空でないこと、有効期限、ユーザー ID、状態、レスポンスのバリアントごとに互いに排他的なフィールド、リフレッシュトークンのローテーション、現在の認証主体を検証する。
+- 不正な `2xx` レスポンスを、成功として反映してはならない。
+
+### 10.5 ネットワーク、URL、ディープリンク、WebView
+
+- 本番環境とプレビュー環境では、原則として HTTPS のみを使用する。
+- ローカル開発で HTTP を許可する例外は、必ず明示する。意図しないオリジンへ、暗黙にフォールバックしてはならない。
+- API クライアントには、固定された検証可能なベース URL を使用する。
+- 認証付きクライアントには、原則として内部の相対パスを渡す。ページから任意の絶対 URL を受け付けない。
+- トークンは、プロジェクトで承認された API／認証用オリジンだけに送信する。
+- オブジェクトストレージへのアップロード、外部リンクを開く操作、サードパーティのプレビューへのリクエストには、アプリの Authorization ヘッダーを付けない。
+- 本番環境で TLS 検証を無効にしてはならない。
+- リクエスト層には、タイムアウト、キャンセル、一貫したエラーレスポンスの構造、リクエスト ID、管理されたヘッダー、レスポンスサイズとファイルダウンロードの制限を設ける。
+- 外部 URL は標準のパーサーで解析し、許可するスキームを明確にする。
+- `javascript:`、`data:`、`file:`、未承認の独自スキームは拒否する。
+- トークン、個人データ、内部 ID を、サードパーティの URL のクエリに埋め込まない。
+- ディープリンクでは、スキーム、ホスト、パス、パラメータを検証する。安定した ID を使用し、形式と長さを制限する。
+- ディープリンクで、認証のルートガード、ユーザーによる確認、フロー用のワンタイムトークンを迂回してはならない。
+- ログイン後の遷移先は必ず許可リストで制限し、オープンリダイレクトを防ぐ。
+- WebView を許可する場合は、オリジンの許可リスト、JavaScript、ナビゲーションの介入処理、ファイル・カメラ・位置情報の権限、Cookie、注入する JavaScript、メッセージのスキーマ、ダウンロード、アップロード、外部への遷移に関する方針を必ず定める。
+
+### 10.6 ファイル、画像、アップロード、ログ
+
+- システムのピッカーが返す MIME、拡張子、ファイル名は、信頼できないメタデータとして扱う。
+- アップロード前に、許可されたファイル形式、サイズ、必要なマジックバイトを検証する。
+- サーバー側でも、MIME、サイズ、署名、所有者、アップロード状態を必ず再検証する。
+- 署名付き URL やサードパーティのアップロード先オリジンに、アプリの Bearer トークンを渡さない。例外は、契約で明示的に要求され、かつ送信先オリジンが管理下にある場合に限る。
+- ファイルハンドルは、成功、失敗、キャンセルのどの経路でも閉じる。
+- アップロードのキャンセル、アプリのバックグラウンド移行、URI 権限の失効について、失敗時の処理を明確に定める。
+
+記録してよい必要最小限の診断情報：
+
+- イベント名
+- 安定したエラーコード
+- HTTP ステータス
+- リクエスト ID
+- プラットフォーム／アプリのバージョン
+- 個人データを含まない状態遷移の理由
+
+記録してはならない情報：
+
+- パスワード、認証コード
+- アクセス／リフレッシュ／セットアップ／リセット用トークン
+- Authorization、Cookie、保護されたストレージの値
+- リクエスト／レスポンスのボディ全体
+- 元の本人確認書類、正確な位置情報、連絡先一覧、健康データ
+- マスキングしていないメールアドレス、電話番号、IP、外部 URL のクエリ
+
+サードパーティ SDK に渡す前に、トランスポート層かログ出力用の Adapter で、機密情報の除去・マスキングを必ず完了する。ユーザー向けのエラーに、スタックトレース、SQL、内部パス、トークンの状態、バックエンドの実装を表示しない。
+
+### 10.7 権限、プライバシー、クリップボード、共有
+
+- 権限は、機能が実際に必要とする時点で要求する。起動時にまとめて要求しない。
+- 権限を要求する前に、用途を説明する。
+- 拒否、制限、一部の許可、設定からの許可取り消しに対して、ユーザーが理解しやすい代替動作を提供する。
+- 拒否したユーザーに繰り返し要求して煩わせない。
+- カメラ、写真ライブラリ、マイク、位置情報、通知、Bluetooth の権限は、必要最小限の範囲だけ要求する。
+- iOS の利用目的の説明と Android の権限は、実際の用途を正確に反映させる。
+- バックグラウンドタスク、拡張機能、共有シート、ウィジェットなど、独立した実行環境では、セッションとデータへのアクセスを個別に設計する。
+- 必要なデータとリソースだけにアクセスする。
+- 同意が必要な処理は、必ず同意を得てから開始する。サードパーティ SDK も、事前にデータを収集すべきではない。
+- ユーザーがデータの管理、削除、変更や設定の取り消しを行えるようにすべきである。
+- データを無期限に保持しない。データ削除とアカウント削除の結果を明確にする。
+- トークン、認証コード、機密情報を含むフィールドを、自動でクリップボードにコピーしない。
+- 機密情報を扱うページでスクリーンショットや画面録画を禁止するかどうかは、プロジェクトでリスクを評価して判断する。
+- Share Sheet には、ユーザーが明示的に選んだ必要最小限の内容だけを渡す。
+- ファイルを共有する前に、メタデータやキャッシュの保存場所から余分な情報が漏れないことを確認する。
+
+### 10.8 依存パッケージとセキュリティテスト
+
+- 依存パッケージを明示的に宣言し、レビュー可能なバージョンに固定する。
+- 新しい依存パッケージでは、ネイティブの権限、ネットワークの動作、メンテナンス状況、間接的な依存関係をレビューする。
+- ロックファイルをバージョン管理に含める。
+- セキュリティ更新は、テストとリリースの手順を経て適用する。レビューせずにメジャーバージョンを上げてはならない。
+- 信頼できない入手元のインストールスクリプト、バイナリ、内容不明のコードを実行しない。
+- メンテナンスが停止した SDK、既知の脆弱性がある SDK、要求する権限が過剰な SDK には、置き換え計画を用意する。
+
+少なくとも次をテストする。
+
+- 保護されたストレージの読み取り／書き込み／削除の失敗
 - persist-before-publish
 - local-first logout
-- refresh singleflight と retry limit
-- concurrent logout / refresh / login
-- stale response が new account を汚染しない
-- invalid Auth / API response を reject
-- token が Context、route、log、analytics payload に入らない
-- URL scheme、host、redirect validation
-- deep-link route guard
-- file MIME、size、magic bytes、URI expiry
-- permission denied / limited / revoked
-- logout / account switch 後の cache cleanup
-- production configuration が unexpected HTTP を reject
+- リフレッシュ処理の一本化とリトライ上限
+- ログアウト／リフレッシュ／ログインの並行実行
+- 古いレスポンスが、新しいアカウントのデータに混入しないこと
+- 不正な認証／API レスポンスが拒否されること
+- トークンが Context、ルート、ログ、分析データのペイロードに含まれないこと
+- URL のスキーム、ホスト、リダイレクトの検証
+- ディープリンクのルートガード
+- ファイルの MIME、サイズ、マジックバイト、URI の失効
+- 権限の拒否／制限／取り消し
+- ログアウトとアカウント切り替え後のキャッシュのクリーンアップ
+- 本番環境で、意図しない HTTP 通信が許可されないこと
 
-Node test は Keychain、Keystore、TLS、backup、permission、real deep-link configuration の正しさを証明できません。iOS / Android release build で検証し、必要に応じて正式な mobile security assessment を行います。
+Node のテストだけでは、Keychain、Keystore、TLS、バックアップ、権限、実際のディープリンク設定が正しいことを確認できない。これらは iOS / Android のリリースビルドで必ず検証し、必要に応じて正式なモバイルセキュリティテストを実施する。
 
-## Security review checklist
-
-- [ ] data を分類し、minimization に従っている。
-- [ ] client bundle に本当の secret がない。
-- [ ] secret は controlled adapter だけを通して protected storage に入る。
-- [ ] token が public React state、route、URL、log、analytics に入らない。
-- [ ] backend が identity、account status、permission、resource ownership を引き続き検証する。
-- [ ] production network が controlled HTTPS origin を使う。
-- [ ] Auth header を external link または object storage へ送らない。
-- [ ] async Auth / API response に stale-result fencing がある。
-- [ ] external URL、deep link、file、network response を untrusted input として扱う。
-- [ ] permission を必要時に request し、denial fallback がある。
-- [ ] third-party SDK の data / consent behavior を review した。
-- [ ] logout、account switch、data deletion に明示 cleanup がある。
-- [ ] iOS / Android release build で security acceptance を完了した。
-
-## 参照基準
-
-- [OWASP Mobile Application Security Verification Standard](https://mas.owasp.org/MASVS/)
-- [OWASP MASVS Storage](https://mas.owasp.org/MASVS/05-MASVS-STORAGE/)
-- [OWASP MASVS Network](https://mas.owasp.org/MASVS/08-MASVS-NETWORK/)
-- [OWASP MASVS Privacy](https://mas.owasp.org/checklists/MASVS-PRIVACY/)
-- [Expo Store data](https://docs.expo.dev/develop/user-interface/store-data/)
-- [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+---

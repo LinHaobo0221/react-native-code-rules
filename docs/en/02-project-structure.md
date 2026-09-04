@@ -1,12 +1,8 @@
-# 02 Project and Directory Structure
+# 2. Standard `mobile/` directory structure
 
-> This document defines the standard `mobile/` directories, responsibility boundaries, dependency direction, and file-placement rules.
+Use the following standard structure:
 
-## Standard structure
-
-A React Native / Expo App uses this structure by default:
-
-~~~text
+```text
 mobile/
 ├── app/
 ├── features/
@@ -14,6 +10,8 @@ mobile/
 │       ├── pages/
 │       ├── ui/
 │       ├── hooks/
+│       ├── model/
+│       ├── use-cases/
 │       ├── events/
 │       ├── data/
 │       ├── constants/
@@ -40,157 +38,106 @@ mobile/
 ├── metro.config.js
 ├── tsconfig.json
 └── package.json
-~~~
+```
 
-Create directories only when needed. Do not commit empty directories merely to make the structure appear complete. `api`, `auth`, `context`, `events`, and `plugins` exist only when the project actually needs them.
+Create directories as needed; do not commit empty directories just to fill out the structure. Add directories such as `model`, `use-cases`, `api`, `auth`, `context`, `events`, and `plugins` only when the project needs them. Do not add Controllers, Reducers, Use Cases, or Repositories to simple pages just to match this structure.
 
-## Top-level responsibilities
+### 2.1 Top-level directory responsibilities
 
-### `app/`
+| Directory | Rules |
+| --- | --- |
+| `app/` | Only Expo Router route entry points, route-group `_layout` files, and minimal glue code; no full-page JSX, business state, static business data, or large style blocks. |
+| `features/` | Organized around stable product features or user flows; feature names describe a business domain, not just where a page appears visually. |
+| `shared/` | Only code with established, stable reuse across features, or code the project explicitly designates as infrastructure or part of its design system; not a holding area for code with no clear home. |
+| `assets/` | Local images, SVGs, fonts, and other static assets; file names must describe their purpose. |
+| `types/` | App-wide environment declarations, resource module declarations, and genuinely cross-layer public types. |
+| `plugins/` | Expo config plugins or build-time extensions; no runtime business logic. |
+| `test/` | Cross-feature test utilities, fixture builders, and test-environment helpers. |
+| `docs/agents/` | Project-level rules, component catalogs, and approved architectural exceptions. |
 
-- Contains only Expo Router entries, route-group `_layout` files, and very thin route bridges.
-- Does not contain full-screen JSX, business state, static business data, or large style blocks.
-- Route files should re-export screens from `features/<feature>/pages` whenever possible.
+### 2.2 Feature subdirectory responsibilities
 
-### `features/`
+| Directory | What belongs here | Constraints |
+| --- | --- | --- |
+| `pages/` | Page-level components that compose sections, call page Controller hooks, and pass state and actions. | Use `PascalCase` file names by default; do not leave complex state machines, large numbers of handlers, low-level visual details, or extensive hardcoded data here long-term. |
+| `ui/` | Presentation components and structural blocks for the current feature, such as cards, list items, form sections, complex decorations, and SVG groups. | May reflect the feature's semantics, but must not call APIs directly, read or write authentication data or storage, or make routing decisions. |
+| `hooks/` | React bindings, local UI state, page/flow Controllers, lifecycle handling, and side-effect integration. | Do not reimplement underlying clients, bury independently testable business rules in React hooks, or create chains of pass-through handlers. |
+| `model/` | Pure state models, Reducers, selectors, validation, state transitions, and business invariants. | Do not import React, Expo Router, API clients, or mutable global state; Reducers and selectors must remain pure functions. |
+| `use-cases/` | Multistep business operations named after user intent, such as submitting a profile, publishing a post, or switching accounts. | Use TypeScript functions without React dependencies by default; no UI, toast, or navigation operations; do not create a Use Case just to forward a single API call. |
+| `events/` | Typed event names, payloads, and Provider-scoped entry points. | Only for lightweight notifications; not a business source of truth, persistent cache, or replacement for direct call chains. |
+| `data/` | Static presentation data, local prototype data, option configuration, and minimal offline fallbacks. | No requests, side effects, or long-lived authoritative business data. |
+| `constants/` | Stable feature-private constants, enum mappings, and constants with design meaning. | Prefer values from project tokens; do not duplicate them in features. |
+| `api/` | Feature-specific endpoint adapters, DTO transformations, runtime validation, and API methods with clear business meaning. | General request handling, authentication refresh, error envelopes, and other infrastructure belong in `shared`; no page state or navigation. |
+| `context/` | Providers scoped to the current feature or an explicit route boundary. | Do not use as an unbounded global store or for large objects that change frequently. |
+| `types/` | Feature-specific UI models, Use Case inputs/results, event payloads, and domain types. | Expose backend contracts through approved public packages; do not reference backend-internal files directly. |
+| `utils/` | Feature-specific pure functions. | No React hooks, routing, APIs, or mutable global state. |
 
-- Divided by stable product capability or user flow.
-- A feature name expresses a business domain, not a visual position on a screen.
-- Each feature owns its pages, private components, Hooks, data, and events.
-- A feature must not read another feature's pages or internal state directly.
+### 2.3 Shared subdirectory responsibilities
 
-### `shared/`
+- `shared/ui`: Project-level UI primitives and stable, business-neutral UI patterns. Documentation may distinguish `primitive` from `pattern`, but additional directories are not mandatory.
+- `shared/hooks`: Generic React behavior without business-specific names, such as controlled disclosure or a stable keyboard adapter; hooks for business flows do not belong here.
+- `shared/events`: Typed event infrastructure without business semantics.
+- `shared/api`: Request clients, error handling, and cross-feature transport infrastructure.
+- `shared/auth`: Centralized authentication; pages must not manipulate tokens directly.
+- `shared/constants`: Stable cross-feature constants and project-level token entry points.
+- `shared/types`: Genuinely cross-feature types.
+- `shared/utils`: Pure utilities without side effects.
 
-- Contains capabilities that are already reused consistently across features and do not carry one screen's business meaning.
-- Shared code must not depend on `features/*`.
-- Do not move private feature implementations into shared merely because they might be reused in the future.
+Every public module in `shared` should have a clear purpose, consumers, and API boundary. “We may use it later” or “two pages look similar” is not sufficient reason to move code into `shared`.
 
-### `assets/`
+### 2.4 Dependency direction
 
-- Contains local images, SVGs, fonts, and other static resources.
-- The project rules decide asset categories, but file names must describe their purpose.
+```text
+app
+└── feature pages
+    ├── feature ui ───────────────> shared/ui
+    └── feature hooks/controllers
+        ├── feature use-cases ────> feature model / feature api / shared
+        ├── feature model ────────> feature types / pure shared utilities
+        └── feature api ──────────> shared/api
+```
 
-### `types/`
-
-- Contains App-wide environment declarations, resource module declarations, and types that are truly shared across layers.
-- Feature-specific types remain inside the corresponding feature.
-
-### `plugins/`
-
-- Contains Expo config plugins or build-time extensions.
-- Does not contain runtime business logic.
-
-### `test/`
-
-- Contains cross-feature test utilities, fixture builders, and test-environment helpers.
-- Unit tests for a screen or module should remain next to the tested file.
-
-## Feature subdirectory responsibilities
-
-### `pages/`
-
-- Screen-level components, using `PascalCase` file names by default.
-- A page composes sections and UI components and passes Hook results.
-- A page must not permanently own complex state machines, many handlers, or low-level visual details.
-- Pages re-exported by Expo Router use the project's stable export convention; if no convention exists, use `default export`.
-
-### `ui/`
-
-- Presentational components and structural sections used only by the current feature.
-- May use feature-specific semantic names, but receives state and callbacks through props.
-- Does not directly make API requests or navigation decisions.
-- Complex decoration, SVG groups, form sections, cards, and list items belong here.
-
-### `hooks/`
-
-- Contains local feature state, derived state, handlers, effects, and flow orchestration.
-- UI wrappers for API mutation/query state may live here, but the low-level client must not be reimplemented.
-
-### `events/`
-
-- Contains feature-local typed event names, payloads, and Provider-scoped entry points.
-- Events are only for lightweight notification; they are not a source of business truth or persistent cache.
-
-### `data/`
-
-- Contains static display data, local prototype data, option configuration, and minimal offline fallback data.
-- Does not contain requests, side effects, or long-lived business facts.
-
-### `constants/`
-
-- Contains stable feature-private constants, enum mappings, and design-semantic constants.
-- Concrete Token values should come from project Design Tokens instead of being copied into a feature.
-
-### `api/`
-
-- Contains feature-specific endpoint adapters, DTO conversion, or semantic API methods.
-- Shared request, Auth refresh, and error-envelope infrastructure belongs in shared.
-
-### `context/`
-
-- Contains Providers scoped to the feature or an explicit route boundary.
-- Context is not an unbounded global store and must not carry large, frequently changing objects that rerender the entire subtree.
-
-### `types/`
-
-- Contains feature-specific UI models, event payloads, and domain types.
-- Backend-shared contracts must be exposed through a project-approved cross-workspace package; do not import backend internal files directly.
-
-### `utils/`
-
-- Contains feature-specific pure functions.
-- Does not access React Hooks, navigation, or mutable global state.
-
-## Shared subdirectory responsibilities
-
-- `shared/ui`: base UI patterns reused across features.
-- `shared/hooks`: cross-feature Hooks without concrete business names.
-- `shared/events`: typed event-bus infrastructure without business semantics.
-- `shared/api`: request client, error handling, and cross-feature transport infrastructure.
-- `shared/auth`: used only when the project has unified Auth; screens must not manipulate tokens directly.
-- `shared/constants`: stable cross-feature constants and the project Design Token entry point.
-- `shared/types`: types that are genuinely shared across features.
-- `shared/utils`: side-effect-free utilities.
-
-## Dependency direction
-
-The default dependency direction is:
-
-~~~text
-app -> feature pages -> feature ui/hooks -> shared
-~~~
-
-Required rules:
+The following rules are mandatory:
 
 - `shared` must not import `features`.
-- A feature must not import another feature's pages, private Hooks, or private data.
-- `data`, `constants`, `types`, and pure `utils` must not depend back on pages or UI.
-- UI components must not depend directly on navigation, API clients, Auth, or business stores.
-- Cross-workspace code must use the provider package's public `exports` and must not import internal paths.
+- UI components do not depend directly on routing, API clients, authentication, storage, Use Cases, or business stores.
+- Pages compose UI and Controllers; do not scatter multistep API orchestration throughout a page.
+- Controller hooks may use React lifecycle and navigation; Use Cases and Models must not access React, React Native UI, or Expo Router.
+- `model`, `data`, `constants`, `types`, and pure `utils` do not depend on higher-level pages, UI, Controllers, or APIs.
+- `api` must not depend on Page/UI; transform DTOs into domain or UI models at explicit boundaries, not separately on multiple pages.
+- A feature must not import another feature's pages, private hooks, private UI, or private data. When cross-feature use is necessary, use an approved public entry point or move business-neutral functionality into `shared`.
+- Shared code across workspaces must use public package `exports`; do not import internal paths directly.
+- Do not use an EventBus, Context, or module singleton to bypass the defined dependency direction.
+- Do not use `shared` as a catch-all to avoid making architectural decisions.
 
-If two features need the same capability, first decide whether the abstraction is already stable and business-neutral before moving it into shared. Do not treat shared as a miscellaneous directory that avoids architecture decisions.
-
-## Naming and file rules
+### 2.5 File naming
 
 - Components and pages: `PascalCase.tsx`
-- Component styles: `ComponentName.styles.ts`
-- Hooks: `useSomething.ts`
+- Page Controller hooks: `useSomethingController.ts`
+- Local behavior hooks: `useSomething.ts`
+- Use Cases: `verbNoun.ts`, such as `submitProfile.ts` or `publishPost.ts`
+- Reducers / state models: `somethingReducer.ts`, `somethingModel.ts`
 - Pure utilities: `camelCase.ts`
 - Tests: `name.test.ts` or `name.test.tsx`
-- Types: use semantic file names; do not let a generic `types.ts` grow indefinitely
-- Constants: use semantic file names; do not let a generic `constants.ts` grow indefinitely
-- Route files follow Expo Router and the current project's lowercase path convention
+- Types: use descriptive file names; do not let a generic `types.ts` grow indefinitely.
+- Constants: use descriptive file names; do not let a generic `constants.ts` grow indefinitely.
+- Route files: follow Expo Router and the project's existing lowercase path rules.
 
-Each file has one primary responsibility. Split a file based on its reading path, reasons to change, and test boundaries—not a mechanical line count alone.
+Avoid vague names such as `helpers.ts`, `manager.ts`, `common.ts`, and `service.ts`. If the code genuinely serves as a Service, Manager, or Facade, its name must identify what it manages or the boundary it represents, as in `AuthSessionCoordinator`. Document that responsibility in the project rules.
 
-## File-placement decision order
+Each file should have one primary responsibility. Decide whether to split it based on how the code is read, why it changes, and where it is tested—not simply on line count. Do not create pass-through files just to add layers.
 
-Before adding code, decide in this order:
+### 2.6 Where to put new files
 
-1. Is it only an Expo Router entry? Place it in `app/`.
-2. Does it serve only one feature? Place it in the most specific directory within that feature.
-3. Is it already stably reused by multiple features without business semantics? Consider shared.
-4. Is it an asset, declaration, build plugin, or test infrastructure? Use the corresponding top-level directory.
-5. If still uncertain, do not add a custom top-level directory. Start with the smallest feature boundary and record the assumption.
+1. Only an Expo Router entry point: place in `app/`.
+2. Serves only one feature: place in that feature's most specific directory.
+3. Handles React lifecycle or provides a page-action entry point: place in `hooks/`, naming it a Controller when complex.
+4. Implements a multistep user intent independently of React: place in `use-cases/` when its complexity warrants it.
+5. A pure state transition, rule, or selector: place in `model/` or `utils/`.
+6. Has established, stable reuse across features, or is explicitly designated by the project as a base primitive, and has no business semantics: consider `shared/`.
+7. An asset, declaration, build plugin, or test infrastructure: place in the corresponding top-level directory.
+8. Still unclear: keep it within the narrowest feature scope and record your assumption; do not create a custom top-level directory.
 
-Do not change the `mobile/` top-level structure or introduce a parallel architecture without explicit project approval.
+Do not change the top-level `mobile/` structure or establish a parallel architecture without explicit project approval.
+
+---
