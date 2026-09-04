@@ -1,229 +1,259 @@
-# App-Specific Mobile Rules
+# App-specific mobile development rules
 
-> Copy this template to `mobile/docs/agents/app-specific.md` in the consuming project. Remove example prompts and fill in the current App's real configuration. Write “undecided” for facts that are not yet established; never substitute another App's configuration.
+> Copy this template to `mobile/docs/agents/app-specific.md` or an equivalent project-level document in your project. Fill in your app's actual configuration. Mark anything not yet decided as “undecided”; do not use another app's configuration as a substitute. The 22 sections below match the items in section 11 of the full engineering standards.
 
 ## 1. Project identity
 
 - Rules language: `en`
 - App name:
-- Mobile workspace path: `mobile/`
+- `mobile/` path:
 - Package name:
 - Expo SDK:
 - React Native:
 - React:
 - Package manager:
-- Native workflow: managed / prebuild / bare
+- Native workflow:
 
-## 2. Required project documents
-
-List project documents that must also be read before generating mobile code:
+## 2. Required documents
 
 - Architecture:
 - API contract:
-- Data and storage strategy:
-- Keyboard-layout guide:
-- Testing:
-- Release:
+- Data and storage:
+- Keyboard layout:
+- Testing standards:
+- Release standards:
 
 ## 3. Directories and path aliases
 
-- Fully adopts the shared `mobile/` structure:
+- Uses the standard directory structure:
 - Approved additional directories:
+- Conditions for using `model`:
+- Conditions for using `use-cases`:
 - Path aliases:
-- Route files permit `index.tsx`:
+- `index.tsx` convention:
 - Page export convention:
-
-For each deviation, record the reason and scope.
 
 ## 4. Routing and navigation
 
-- Expo Router route groups:
+- Route groups:
 - Root Stack:
 - Tabs:
-- Stack for each tab:
-- Cross-tab full-screen screens:
-- Route-level Modals:
-- Route-constant file:
-- Default push / replace / modal animation:
-- Gesture and system-back requirements:
+- Tab Stack:
+- Cross-tab screens:
+- Modals:
+- Route constants:
+- Animation requirements:
+- Back-navigation requirements:
 
-## 5. Design Tokens
+## 5. Design tokens
 
-- Token code source of truth:
+- Authoritative definitions in code:
 - Figma Variables / Library:
 - Colors:
 - Spacing:
 - Radius:
-- Shadow / elevation:
+- Shadows:
 - Typography:
-- z-index / layer:
-- Light / dark / brand modes:
-
-Record sources and naming systems rather than copying every Token value.
+- z-index:
+- Theme modes:
 
 ## 6. Fonts and languages
 
 - Supported languages:
-- Loaded fonts:
-- Default font by language:
-- English / numeric display font:
-- Weight mapping:
-- Fallback strategy:
-- Dynamic type and maximum-scale strategy:
+- Fonts:
+- Fallbacks:
+- Font-weight mapping:
+- Dynamic type:
+- Maximum text scaling:
 
 ## 7. Motion
 
-- Motion-Token source of truth:
-- Navigation transitions:
+- Motion tokens:
+- Navigation:
 - Modal / Sheet:
 - Press feedback:
-- Loading / skeleton:
-- Reduce motion:
+- Loading:
+- Reduced motion:
 - Prohibited implementations:
 
 ## 8. Styling and base components
 
-- Default styling system:
-- Global theme entry:
-- Existing common Button:
-- Existing common Input:
-- Existing Switch / Checkbox / Radio:
-- Existing Image / Avatar:
-- Existing Modal / Sheet:
-- Existing keyboard-aware component:
-- Existing loading / empty / error component:
+- Styling system:
+- Rules for colocating or separating styles:
+- Theme entry point:
+- Button entry point:
+- Input entry point:
+- Switch entry point:
+- Checkbox entry point:
+- Radio entry point:
+- Image entry point:
+- Avatar entry point:
+- Modal entry point:
+- Sheet entry point:
+- Entry point for keyboard-aware components:
+- Loading entry point:
+- Empty-state entry point:
+- Error-state entry point:
 
-Feature screens must reuse these entry points instead of creating parallel versions.
+## 9. Shared component catalog
 
-## 9. Images, SVG, and icons
+- Public primitives / patterns:
+- Public entry points:
+- Direct consumers:
+- Variants:
+- Deprecated components:
+- Component example locations:
+- Policy for custom style overrides:
 
-- Asset directory:
+## 10. Images, SVG, and icons
+
+- Asset directories:
 - SVG integration:
-- Approved icon sources:
-- Multi-density bitmap rules:
-- Placeholder / fallback:
-- Additional file-naming rules:
+- Icon sources:
+- Bitmaps for different pixel densities:
+- Placeholders:
+- Fallbacks:
+- Naming rules:
 
-## 10. Data, API, and state
+## 11. Data, API, and state
 
 - API client:
 - Response envelope:
-- Query / mutation Hook convention:
-- Auth strategy:
-- Token storage:
-- Key-value storage:
-- Structured offline data:
+- Conditions for using a Controller:
+- Conditions for using a Use Case:
+- Conditions for using a Reducer:
+- Conditions for using a Strategy:
+- Conditions for using an Adapter:
+- Conditions for using a Repository:
+- Authentication:
+- Tokens:
+- KV:
+- Offline data:
 - File cache:
-- Scoped event / state mechanism:
-- Prohibited state or storage mechanisms:
+- Scoped events / state:
+- Prohibited approaches:
 
-Confirm every unapproved data strategy separately before implementation.
+## 12. Control-flow conventions
 
-## 11. Platform configuration
+- Main action paths:
+- Controller return structure:
+- Use Case result conventions:
+- Error mapping:
+- Navigation ownership:
+- Submission locks:
+- Cancellation rules:
+- Stale-result rules:
+
+## 13. Reuse strategy
+
+- Reuse search scope:
+- Feature First:
+- When to move code into shared:
+- Migration process:
+- Process for moving shared code back into a feature:
+- Allowed slots / variants:
+- When to revisit duplicated code:
+
+## 14. Platform configuration
 
 - Minimum iOS version:
-- Minimum Android version / API level:
+- Minimum Android version:
 - Edge-to-edge:
-- StatusBar / system navigation:
-- Safe-area base shell:
-- Permission handling:
-- Known platform differences and fallbacks:
+- StatusBar:
+- System navigation:
+- Safe area:
+- Permissions:
+- Platform differences:
 
-## 12. Performance and rendering
+## 15. Performance and rendering
 
-- Target devices and minimum device tier:
+- Target devices:
 - Critical performance paths:
-- Release profiling build method:
-- Profiling tools:
-- Startup, frame-rate, memory, or interaction budgets:
-- Typical and maximum large-list data volume:
-- Virtual-list implementation:
-- Image loading, cache, and thumbnail strategy:
-- Cache owners, capacity, and cleanup:
-- Known performance risks and acceptance scenarios:
+- Release profiling:
+- Tools:
+- Budgets:
+- List sizes:
+- Virtualized lists:
+- Image cache:
+- Cache owners:
+- Cleanup strategy:
 
-## 13. Testing strategy
+## 16. Testing strategy
 
 - Test runner:
-- Unit / Hook tests:
-- Component tests:
-- Integration tests:
-- E2E tool:
-- Native-module mocks:
-- Global setup / cleanup:
-- Test-file include rules:
-- Test-ID naming:
-- Coverage strategy:
-- Flaky-test handling:
-- iOS / Android acceptance matrix:
-- Required CI checks:
+- Tools for each testing layer:
+- Use Case tests:
+- Reducer tests:
+- Controller tests:
+- Native mocks:
+- Setup / cleanup:
+- Test file inclusion rules:
+- Test IDs:
+- Coverage:
+- Flaky tests:
+- Acceptance test matrix for both platforms:
+- CI checks:
 
-## 14. Security and privacy
+## 17. Security and privacy
 
-- Data classification and sensitive-field inventory:
-- Auth / session contract:
+- Data classification:
+- Authentication contract:
 - Protected storage:
-- Regular KV / database / file cache:
-- API base URL and approved origins:
-- Development HTTP exceptions:
-- Deep link / universal link allowlist:
-- WebView strategy:
-- Permission inventory and request timing:
-- Logging / analytics / crash redaction:
-- Third-party SDK data scope and consent:
-- Logout / account-switch / deletion cleanup:
-- Backup / device migration / biometrics:
-- Applicable OWASP MASVS scope or other security baseline:
+- KV / database / cache:
+- API origins:
+- HTTP exceptions:
+- Deep links:
+- WebView:
+- Permissions:
+- Log redaction:
+- SDK consent:
+- Logout cleanup:
+- Deletion cleanup:
 
-## 15. Dependency constraints
+## 18. Dependency constraints
 
-- Approved UI / animation / gesture packages:
+- Approved UI dependencies:
+- Approved animation dependencies:
+- Approved gesture dependencies:
 - Approved native modules:
-- New-dependency approval:
-- Workspace-dependency rules:
-- Expo config-plugin rules:
+- Approval process for new dependencies:
+- Workspace dependency rules:
+- Expo config plugin rules:
 
-## 16. Figma workflow
+## 19. Figma workflow
 
-- Figma team / project:
+- Team / project:
 - Design Library:
 - Screen files:
 - Dev Mode / Code Connect:
-- Asset-export permission and directory:
-- Token-alignment owner or process:
-- Visual-acceptance devices:
+- Asset export permissions:
+- Token and shared component alignment process:
+- Devices used for visual acceptance testing:
 
-## 17. Validation and delivery commands
+## 20. Validation and delivery commands
 
-~~~bash
-# format
-
-# lint
-
-# typecheck
-
-# test
-
-# iOS
-
-# Android
-~~~
-
+- Format:
+- Lint:
+- Typecheck:
+- Test:
+- Dependency boundary:
+- iOS:
+- Android:
 - Minimum delivery checks:
-- Required CI checks:
-- Location of known pre-existing issues:
+- CI checks:
+- Where existing issues are documented:
 
-## 18. Project-specific prohibitions
+## 21. Project-specific prohibitions
 
-- Add project-specific prohibitions.
+- Project-specific prohibitions:
 
-## 19. Approved exceptions
+## 22. Approved exceptions
 
-For each exception, record:
+Record each exception separately:
 
 - Shared rule:
-- Reason:
-- Scope:
-- Alternative mitigation:
+- Reason for the exception:
+- Scope of impact:
+- Alternative measures:
 - Acceptance method:
-- Expiration or review condition:
+- Expiration or review conditions:

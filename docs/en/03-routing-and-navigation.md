@@ -1,36 +1,36 @@
-# 03 Routing and Navigation
+# 3. Routing and navigation rules
 
-> This document defines general Expo Router organization. Concrete route groups, paths, tab names, and transition values belong in project-specific rules.
+### 3.1 Router entry points
 
-## Core rules
+- `mobile/app/` contains only route declarations, layouts, and minimal glue code.
+- Actual page implementations belong in `features/<feature>/pages/`.
+- Prefer keeping route files to re-exports only.
+- `app/_layout.tsx` is responsible only for root navigation, Providers, and global system configuration.
+- Do not accumulate hooks, static data, or styles in route files.
+- Maintain route strings centrally in project route constants or type-safe entry points.
+- Do not scatter hardcoded values for `router.push`, `replace`, `pathname`, `Stack.Screen name`, `Tabs.Screen name`, or `initialRouteName`.
+- Project rules determine whether `index.tsx` is allowed, which route-group names are required, and which path-alias conventions to use.
 
-- `mobile/app/` contains only route declarations, layouts, and very thin bridges.
-- Real screen implementations live in `features/<feature>/pages/`.
-- Route files should contain only re-exports whenever possible; do not accumulate Hooks, static data, and styles there.
-- `app/_layout.tsx` handles root navigation, Providers, and global system configuration; it does not contain screen business content.
-- Route strings must be centralized in the project's route constants or type-safe entry point.
-- Hard-coded strings for `router.push`, `replace`, `pathname`, `Stack.Screen name`, `Tabs.Screen name`, and `initialRouteName` must not be scattered across files.
+### 3.2 Route groups
 
-The project-specific rules must state whether `index.tsx` is permitted, which route-group names are fixed, and what path-alias form is used. When a project already has a consistent convention, new screens follow it instead of creating a second path style.
+Route groups express stable navigation boundaries, such as:
 
-## Route groups
+- Startup flows
+- Unauthenticated flows
+- Authenticated flows
+- Modal flows
+- Other stable shells
 
-A project should divide route groups around stable shells such as startup, unauthenticated, authenticated, Modal, or other navigation boundaries. Shared rules require only that:
+Rules:
 
-- A group expresses a navigation boundary, not a temporary screen category.
-- Screens in one flow should be managed by the same Stack where practical.
-- Whether a screen displays a tab bar, header, or modal shell follows naturally from the correct navigation hierarchy.
-- Do not simulate navigation hierarchy through page styles or conditional unmounting of a navigator.
+- Groups express navigation boundaries, not temporary page categories.
+- Pages in the same flow should, where possible, be managed by the same Stack.
+- Headers, tab bars, and modal shells should follow naturally from the correct navigation hierarchy.
+- Do not simulate route hierarchy with page styles or by dynamically unmounting navigation containers.
 
-Record concrete group names in `app-specific.md`.
+### 3.3 Tabs and Stacks
 
-## Tabs and Stack
-
-Tabs represent only primary destinations. Secondary and deeper screens inside one tab are managed by that tab's own Stack.
-
-Standard relationship:
-
-~~~text
+```text
 Root Stack
 └── App Route Group
     └── Tabs
@@ -39,76 +39,66 @@ Root Stack
         │   └── Detail / Edit / Filter
         └── Tab B Stack
             └── Main
-~~~
+```
 
-Required rules:
+The following rules are mandatory:
 
-- Define Bottom Tab Bar once in the Tabs layout.
-- Do not redraw a tab bar on multiple screens.
-- Do not make detail, edit, or nested settings screens into fake tabs.
-- Do not hide a tab bar by returning `null`, setting height to zero, moving it off-screen, or conditionally unmounting Tabs.
-- A full-screen route that covers all tabs belongs in a Stack outside Tabs.
-- A nested flow owned by one tab remains in that tab's Stack.
+- Tabs are responsible only for switching between top-level destinations.
+- Second- and third-level pages within a tab are managed by that tab's own Stack.
+- Define the bottom tab bar only once, in the Tabs layout.
+- Do not render the tab bar separately on multiple pages.
+- Do not treat detail pages, edit pages, or settings subpages as fake tabs.
+- Do not hide the tab bar through `return null`, zero height, off-screen positioning, or conditional unmounting of Tabs.
+- Full-screen pages covering all Tabs belong in a Stack outside Tabs.
+- Subflows belonging to a particular tab remain in that tab's Stack.
 
-## Navigation semantics
+### 3.4 Navigation semantics
 
-- Use the project's push semantics to open details, edit screens, or the next step.
-- Prefer the native back semantics for returning so the back gesture remains available.
-- Use replace only when a flow node truly replaces history.
-- A tab change retains tab semantics and must not imitate a Stack push.
-- Closing an entire modal flow and returning one step inside that modal are separate actions and must not share incorrect semantics.
+- Moving forward to a detail page, edit page, or next step: use the project's push semantics.
+- Going back: prefer native back semantics and preserve back gestures.
+- Use replace only for steps that genuinely replace navigation history.
+- Switching tabs must retain tab semantics; do not implement it as a Stack push.
+- Closing an entire modal flow and going back one level within it are different actions; use the correct semantics for each.
+- Project motion rules define transitions, gesture settings, and durations; keep the same types of navigation consistent.
 
-Concrete transition animation, gesture settings, and duration come from project motion rules. Shared rules require consistency among similar navigation and respect for native iOS / Android behavior.
+### 3.5 Page classification
 
-## Screen classification
+Before adding a page, identify whether it is:
 
-Before adding a screen, determine whether it is:
-
-1. A root screen of a tab
-2. A nested flow within one tab
-3. A cross-tab full-screen route
+1. A tab's root page
+2. A subflow within a tab
+3. A full-screen page spanning tabs
 4. A route-level modal flow
-5. A sheet / dialog inside a screen rather than an independent route
+5. An in-page sheet / dialog
 
-This classification determines its Stack, whether the tab bar is naturally visible, its close semantics, and its back behavior. Do not place a screen arbitrarily at the `app/` root and compensate for an incorrect hierarchy with styles.
+This classification determines which Stack owns the page, whether the tab bar appears, what closing means, and how back navigation works.
 
-## Route-level Modal versus in-screen overlay
+### 3.6 Modal classification
 
-A route-level modal is usually appropriate when:
+Use a route-level modal when:
 
-- It contains internal multi-step navigation
-- It needs independent history and system-back behavior
+- It contains multistep navigation
+- It needs independent history and system back behavior
 - It must cover the current Tabs
 - Closing means exiting the entire flow
 
-An in-screen Modal / Sheet is usually appropriate for:
+Use an in-page modal / sheet for:
 
-- A short option list
-- A one-time confirmation
-- A date or filter picker
-- A lightweight interaction without independent route history
+- Short option lists
+- One-time confirmations
+- Date or filter pickers
+- Lightweight interactions that do not need independent route history
 
-Reuse the project's stable implementation and animation patterns. Do not create a new overlay structure on every screen.
+### 3.7 Navigation acceptance checks
 
-## Route constants
+Before delivery, check:
 
-The project should centralize:
+- The page is reachable from the correct entry point.
+- The back destination is correct.
+- Replace leaves the expected navigation history.
+- The tab bar does not jump, lag, or render twice during transitions.
+- Closing a modal performs the correct action.
+- iOS back gestures and Android system back work.
+- Changes in navigation hierarchy do not cause safe-area or StatusBar flicker or obscure content.
 
-- path
-- route name
-- route group name
-- common pathname parameter types
-
-Route constants must have clear business semantics, and the same path must not be repeated across files. Use stable IDs for route parameters instead of display text or array indexes.
-
-## Navigation acceptance
-
-Before delivery, verify at minimum:
-
-- The screen is reachable from the correct entry
-- Back returns to the correct destination
-- Replace does not leave history that should not be revisited
-- The tab bar does not jump, appear late, or render twice during transitions
-- Modal close semantics are correct
-- iOS back gestures and Android system back work
-- safe area and StatusBar do not flicker or become obscured when hierarchy changes
+---

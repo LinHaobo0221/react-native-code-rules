@@ -1,206 +1,184 @@
-# 06 インタラクション、プラットフォーム、アクセシビリティ
+# 6. インタラクション、キーボード、Modal、プラットフォーム、アクセシビリティ
 
-> 本文書は React Native 画面におけるインタラクション、キーボード、Modal、safe area、iOS / Android、アクセシビリティの共通品質最低基準を定義します。
+### 6.1 操作できるように見えるコントロールは実際に動作させる
 
-## 操作は実際に機能すること
+操作できるように見えるコントロールには、タスクの範囲に応じたフィードバックを必ず実装する。
 
-操作できるように見える control は、タスク範囲に対応した feedback を提供します。
+- 入力欄では、入力、フォーカス、フォーカス解除ができる。
+- Button / Pressable には、押したことがわかるフィードバックがある。
+- Tab / Segment では、選択状態を切り替えられる。
+- Checkbox / Radio / Switch では、状態を変更できる。
+- Modal / Sheet は開閉できる。
+- 無効状態や読み込み中は、操作の重複を防ぎ、その状態を見た目で明確に示す。
+- リスト項目の選択、ハイライト、展開状態がわかる。
 
-- input は入力、focus、blur ができる
-- Button / Pressable に press feedback がある
-- Tab / Segment で選択状態を切り替えられる
-- Checkbox / Radio / Switch で状態を変更できる
-- Modal / Sheet を開閉できる
-- disabled / loading 状態は重複 action を防ぎ、明確な視覚状態を持つ
-- list item の選択、highlight、展開状態を認識できる
+### 6.2 用途に合ったネイティブコンポーネントを使う
 
-静的デザイン実装では local state で操作を示せますが、付随して実 network、永続化、業務ルールを追加しません。
-
-## 正しい native semantics を使う
-
-意味に適した React Native component またはプロジェクトで承認された基礎 wrapper を使います。
+原則として、用途に合った React Native コンポーネントか、プロジェクトで承認されたラッパーを使用する。
 
 - テキスト入力：`TextInput`
-- click action：`Pressable`
-- 画像：プロジェクトが選択した Image 実装
+- タップ操作：`Pressable`
+- 画像：プロジェクトで採用している Image 実装
 - 長いリスト：`FlatList` / `SectionList`
-- 短い scroll content：`ScrollView`
+- 短いコンテンツのスクロール：`ScrollView`
 - テキスト：`Text`
 
-プロジェクトに統一 Button、Input、Switch、Image、StatusBar、Sheet component がある場合、業務画面はそれを優先して再利用し、並行する別 version を作りません。
+通常の `Text` や静的な `View` を、操作可能なコントロールに見せかけてはならない。
 
-通常の `Text` や静的 `View` を interactive control に見せかけません。
+### 6.3 状態の管理責任
 
-## 操作状態の owner
+- 押下アニメーションの内部値など、見た目だけに関わる一時的な状態は、コンポーネント内部で管理してよい。
+- 入力値、選択項目、スイッチの状態、フローの進行段階は、原則としてページの Hook で制御する。
+- UI は props とコールバックを通じて外部とやり取りする。
+- ページ間の軽量な通知には、プロジェクトで承認されたスコープ付きイベントか状態管理の仕組みを使用する。
+- EventBus は通知の送信だけに使用し、業務データ、API レスポンス、永続的な状態を保持しない。
+- ログイン状態の変化やアプリのライフサイクルをまたいで保持する状態、オフラインからの復元が必要な状態は、データとストレージの設計に必ず明示的に組み込む。モジュール単位のシングルトンで場当たり的につなぎ合わせてはならない。
 
-- 内部 press animation 値など、一時的な視覚状態は component 内で管理できます。
-- input value、selected item、switch state、flow step は原則として画面 Hook が管理します。
-- UI component は props と callback で外部と通信します。
-- 画面をまたぐ軽量通知は、プロジェクトで承認された scoped event または state mechanism を使います。
-- EventBus は通知だけを送り、業務事実、API response、永続 state を保存しません。
-- Auth、App lifecycle、offline restore をまたぐ state には明確な data / storage design が必要であり、module singleton で仮組みしません。
+### 6.4 入力とフォーム
 
-## 入力とフォーム
+各入力コントロールについて、次を検討する。
 
-各 input について次を評価します。
+- `value` / `defaultValue` を使った状態の制御方針
+- プレースホルダー
+- フォーカスとフォーカス解除
+- 無効状態と読み取り専用状態
+- エラーと補助テキスト
+- キーボードの種類
+- リターンキーの動作
+- 自動入力とコンテンツタイプ
+- iOS / Android のプロパティ
+- アクセシビリティラベル
 
-- `value` / `defaultValue` の controlled 方針
-- placeholder
-- focus / blur
-- disabled / readonly
-- error と helper text
-- keyboard type
-- return key behavior
-- autofill と content type
-- 対応する iOS / Android property
-- accessibility label
+パスワード、メールアドレス、認証コード、数値、検索の入力を、iOS のプロパティだけで実装してはならない。Android 固有のプロパティと両プラットフォーム共通のプロパティも必ず確認する。
 
-password、email、verification code、number、search input を iOS property だけで実装せず、Android と共通 property も確認します。
+フォーム送信では、次を必ず満たす。
 
-フォーム送信は次を満たします。
+- 読み込み中は重複して実行されない
+- エラーがどの項目や処理に対応するかが明確である
+- 表示用コンポーネントで API、トークン、ナビゲーションの処理を統括しない
+- キーボードを表示しても、入力中の欄と主要な操作が隠れない
 
-- loading 中の重複 trigger を防ぐ
-- error の owner を明確に保つ
-- API、token、navigation 編成を表示コンポーネントの外へ置く
-- keyboard 表示中も現在の input と主要 action を隠さない
+### 6.5 キーボードによる重なりの防止
 
-## キーボード回避
+`TextInput`、投稿エディター、チャット欄、コメント欄、下部の入力バー、長いフォームを含む場合は、まずプロジェクトのキーボード対応基盤を必ず確認する。
 
-`TextInput`、composer、chat field、comment field、bottom input bar、長い form を含む場合、最初に現在のプロジェクトの keyboard infrastructure と固有規約を確認します。
+- ヘッダーと固定ナビゲーションは、入力欄を含むスクロール領域の外に置く。
+- 長いフォームには、プロジェクト共通のキーボード対応スクロールコンテナを使用する。
+- 下部固定の投稿エディターには、プロジェクト共通の固定フッターかキーボードコントローラーを使用する。
+- リスト下部のパディングには、投稿エディターの実際の高さと必要な余白を含める。
+- 入力欄を含むスクロールコンテナでは、キーボードを閉じる動作とタップ時の動作を適切に設定する。
+- 根拠のない大きな `marginBottom`、仮のキーボード高さ、絶対配置で重なりを解消しない。
+- 同じ入力領域で、複数のキーボード対応の仕組みを併用しない。
+- 各ページで `keyboardDidShow` / `keyboardDidHide` のリスナーを重複して登録しない。
 
-一般原則：
+「通常は 1 行の入力用エリアを表示し、フォーカスするとエディター全体を展開する」UI の場合：
 
-- Header と固定 navigation を入力 scroll 領域の外に置く。
-- 長い form はプロジェクト統一の keyboard-aware scroll container を使う。
-- 固定 bottom composer は統一された sticky footer または keyboard controller solution を使う。
-- list bottom padding に composer の実 height と safe spacing を含める。
-- input scroll container に platform に適した keyboard dismiss と tap behavior を設定する。
-- 任意に大きな `marginBottom`、仮想 keyboard height、absolute position の移動で遮蔽を修正しない。
-- 同じ input 領域へ複数の keyboard mechanism を重ねない。
-- 各画面で `keyboardDidShow` / `keyboardDidHide` listener を個別に登録しない。
+- 通常表示には `Pressable` と表示用テキストを使用する。
+- 展開後に初めて、実際の複数行入力用 `TextInput` を描画する。
+- ラッパーは状態の切り替えだけを担当し、折りたたみ時と展開時のコンポーネントは責務を分ける。
+- 「フォーカスの要求」と「フォーカス済みの状態」を区別し、フォーカス処理のループを防ぐ。
 
-「既定は 1 行入口、focus 後に完全な editor へ展開する」comment または chat UI：
+少なくとも、iOS でのキーボード表示と指の操作に追従して閉じる動作、Android でのキーボード動作とシステムの戻る操作による閉じ方、ジェスチャー／3 ボタンナビゲーション、ページを離れる際のフォーカス解除、キーボードを閉じた後のレイアウト復元を検証する。
 
-- collapsed entry は `Pressable` と表示 text を使います。
-- expanded state だけが実 multiline `TextInput` を render します。
-- wrapper は state transition だけを担当し、collapsed と expanded component の責務を分けます。
-- focus loop を避けるため「focus request」と「すでに focus 済み」を区別します。
+### 6.6 Modal、Sheet、Dialog
 
-focus 前後で意味が変わらない通常の single-line form を、無理に 2 つの input component へ分割しません。
+実装前に、次のどれに該当するかを分類する。
 
-最低限確認します。
+1. ルート単位の全画面モーダル
+2. ページ内のボトムシート／ピッカー
+3. 簡単なダイアログ／アラート／トースト
 
-- iOS keyboard open と interactive dismiss
-- Android keyboard open と system back dismiss
-- Android gesture navigation と three-button navigation
-- 画面退出時の focus と keyboard state cleanup
-- keyboard close 後の layout 復元
+ルート単位の Modal：
 
-## Modal、Sheet、Dialog
+- 複数のステップ、独立した履歴、Tabs 全体を覆う表示が必要なフローに使用する。
+- Modal 内で次のステップに進む際は、内部の Stack を使用する。
+- 閉じるボタンでは、Modal のフロー全体を終了する。
+- StatusBar、上部のセーフエリア、システムの戻る操作を正しく処理する。
 
-実装前に分類します。
+Bottom Sheet / Picker：
 
-1. route-level full-screen modal
-2. 画面内 bottom sheet / picker
-3. 軽量 dialog / alert / toast
+- 背景のオーバーレイとシート本体の責務を分ける。
+- オーバーレイのタップで閉じるかどうかは、デザインに従う。
+- シート本体で受けたイベントを背面に伝播させない。
+- コンテンツが高すぎる場合は、内部のリストを独立してスクロールさせる。
+- `scrollToIndex` は、開いた直後か明示的にリセットしたときだけ実行する。
+- 開閉とオーバーレイのアニメーションには、プロジェクトで共通の基準としているモーション定義を使用する。
 
-種類の異なる実装構造を混在させません。
+簡単な通知や確認：
 
-### Route-level Modal
+- 短い確認や通知のために、複雑なルーティングを伴うフローを作らない。
+- ユーザーによる明示的な確認が必要な高リスク操作を、Toast で済ませない。
+- ページごとに異なるアニメーション時間やイージングを独自にハードコードしてはならない。
 
-- multi-step flow、独立した履歴、Tabs を覆う内容に使います。
-- modal 内の次 step は内部 Stack を使い、close は modal flow 全体を終了します。
-- StatusBar、top safe area、system back を正しく扱います。
+### 6.7 セーフエリア、システム UI、両プラットフォームへの対応
 
-### Bottom Sheet / Picker
+- ナビゲーション全体の構造に応じて、上下左右のインセットを正しく処理する。
+- Modal、没入型ページ、エッジツーエッジ表示は、iOS / Android でそれぞれ検証する。
+- 見せかけの余白、ステータスバー、ホームインジケーターでレイアウトを修正しない。
+- 根拠なくヘッダー、入力欄、主要な操作をシステムのステータスバー領域に配置しない。
+- Android のシステムバーは、背景色とアイコンの明暗を調整し、視認性を確保する。
+- タスクが明示的に一方のプラットフォームに限定されていない限り、すべての実装は原則として iOS と Android の両方に対応する。
 
-- overlay と sheet 本体の責務を分けます。
-- design に従い overlay tap で閉じ、本体は event propagation を止めます。
-- content が画面を超える場合、内部 list を独立 scroll させます。
-- 初期 `scrollToIndex` は最初の open または明示 reset 時だけ実行し、selection 変更のたびに戻しません。
-- open、close、overlay animation は現在の App の共通 motion fact を使います。
+検討が必要な差異：
 
-### 軽量 feedback
+- 影と elevation
+- StatusBar とシステムナビゲーションバー
+- セーフエリアとエッジツーエッジ表示
+- キーボード、自動入力、戻るキー
+- 権限とシステムのピッカー
+- Modal の表示方法
+- 戻るジェスチャー
+- ファイル、画像、共有
+- フォント描画とテキストの切り詰め
+- 触覚フィードバック、アニメーション、視差効果や動きを減らす設定
 
-- 短い確認または message を複雑な route flow にしません。
-- Toast に明示確認が必要な high-risk action を載せません。
+プラットフォームによる分岐は最小限にすべきであり、共通の実装にできない理由を説明する。Web はデバッグの補助にとどめ、ネイティブ環境と表示や動作が異なる場合は、iOS / Android を基準とする。
 
-各画面で異なる animation duration や easing を hard-code しません。
+### 6.8 スクロール領域と固定領域
 
-## Safe Area と system UI
+Figma ページを実装する前に、次を明確にすべきである。
 
-- navigation shell に合わせて top、bottom、left、right inset を処理します。
-- Modal、immersive screen、edge-to-edge 設定を iOS / Android で個別に確認します。
-- 偽の空白、status bar、Home Indicator で layout を修正しません。
-- 根拠なく header、input、主要 action を system status bar 領域へ入れません。
-- Android system bar の背景と icon 明暗を画面背景に対して読みやすく保ちます。
+- ヘッダーを固定するか
+- 中央のコンテンツをスクロールさせるか
+- フッター／CTA を固定するか
+- リスト、フォーム、キーボードの各領域の境界
+- 小さい画面、動的な文字サイズ、長い文言でも表示や操作が可能か
 
-## iOS と Android
+下部に操作領域を固定する場合は、スクロールするコンテンツの下部に、その分のスペースを必ず確保する。ボタンをコンテンツと一緒にスクロールさせるべき場合は、無理に下部へ固定しない。
 
-タスクが 1 platform に限定されない限り、すべての実装は両方に対応します。
+プロジェクトに検証済みの特別な実装がある場合を除き、同じ方向にスクロールする仮想化リストを外側の `ScrollView` で囲んではならない。
 
-次の platform 差異を評価します。
+### 6.9 アクセシビリティ
 
-- shadow と elevation
-- StatusBar と system navigation bar
-- safe area と edge-to-edge
-- keyboard、autofill、back button
-- permission と system picker
-- Modal presentation
-- back gesture
-- file、image、share
-- font rendering と text truncation
-- haptic、animation、reduce motion
+主要な操作要素には、次を設定すべきである。
 
-platform branch は最小化し、統一実装が不可能な理由を説明します。
+- 適切な `accessibilityRole`
+- わかりやすい `accessibilityLabel`
+- 必要に応じた `accessibilityHint`
+- 選択済み、チェック済み、無効、展開済みなどの状態
+- 安定した `testID`。自動テストの主要な操作対象に限って使用する
 
-Web は補助的な debug 環境です。native と Web の挙動が競合する場合、iOS / Android を受け入れ基準にします。
+さらに、次の条件を必ず満たす。
 
-## Scroll と固定領域
+- 小さなコントロールは、タップ領域の拡張や `hitSlop` により、タップ可能なサイズの基準を満たす。
+- 読み上げ順序が見た目の順序と一致する。
+- 重要な状態を色だけで表さず、記号、文言、構造による手掛かりも使用する。
+- テキストを拡大しても、主要なコンテンツを読み、操作できる。
+- Button、Input、エラーテキストに十分なコントラストがある。
+- アニメーションは、視差効果や動きを減らす設定への対応方針に従う。
 
-Figma 画面の実装前に次を明確にします。
+### 6.10 非同期処理の状態
 
-- Header が fixed か
-- 中間 content が scroll するか
-- Footer / CTA が fixed か
-- list、form、keyboard の境界
-- 小画面、dynamic type、長文でも content と主要 action へ到達できるか
+実際のデータを扱うページでは、次の状態を明確に区別すべきである。
 
-bottom action area が fixed なら scroll content に対応する bottom space を確保します。button が content flow に属するなら bottom へ強制固定しません。
+- 初回読み込み中
+- 更新中
+- 次のページの読み込み中
+- データなし
+- 復旧可能なエラー
+- 復旧できないエラー
+- 更新に失敗し、以前のコンテンツを表示している状態
 
-プロジェクトに検証済みの特殊 solution がない限り、layout 設計を回避する目的で同方向 virtualized list を外側 `ScrollView` で包みません。
+すべての失敗を同じ空白ページで表してはならない。静的なプロトタイプには必要最小限のローカルデータを使用する。データ構造は、将来の API が表す意味にできるだけ合わせ、余分なモックの仕組みを作らない。
 
-## アクセシビリティ
-
-主要 interactive element に次を提供します。
-
-- 正しい `accessibilityRole`
-- 明確な `accessibilityLabel`
-- 必要な `accessibilityHint`
-- selected / checked / disabled / expanded state
-- 主要 automation 入口だけに stable `testID`
-
-さらに次を保証します。
-
-- 見た目が小さい control は hit area または `hitSlop` でプロジェクトと platform の target-size 基準を満たす。
-- 読み上げ順序と視覚順序を一致させる。
-- 重要 state を color だけで表さず、symbol、copy、structure cue も使う。
-- text scaling 後も主要 content と action に到達できる。
-- Button、Input、error text が project design system と対象標準に沿った contrast を持つ。
-- motion がプロジェクトの reduce-motion 方針を尊重する。
-
-## 非同期状態
-
-実 data 画面は次を区別します。
-
-- initial loading
-- refreshing
-- pagination loading
-- empty
-- recoverable error
-- terminal error
-- stale content with refresh failure
-
-state の事実源と cache 方針はプロジェクトの data architecture に属しますが、UI はすべての failure を同一の blank screen で表現しません。
-
-静的 prototype では、将来の API semantics に近い shape の最小 local data を使い、不要な mock system を作りません。
+---

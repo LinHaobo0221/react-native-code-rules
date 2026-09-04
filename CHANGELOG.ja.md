@@ -2,19 +2,27 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · **日本語** · [English](CHANGELOG.md)
 
+## 未リリース
+
+- 更新されたルートの `AGENTS.md` に合わせて、中国語・英語・日本語の実行手順を更新。実行順序とタスク別の必読範囲をすべて保持。
+- 原文の改訂版 `v2.0（2026-09-04）` に基づき、三言語の `00`～`12` の文書を再構成。コアルール全 6 節と開発規約全 13 節を保持し、原文第 13 節は `12` に収録。
+- 無効なパスと単一ファイルを前提とした参照を修正。原文 2 件は保守時の比較用に残し、構造上の調整内容をすべて記録。
+- プロジェクトテンプレートを第 11 節の 22 項目に合わせ、README を更新。言語の明示を必須とし、旧版の英語へのフォールバックを廃止。
+- 外部パッケージに依存しない `docs:check` を追加。原文、分割した文書、三言語の構造、コード例、テンプレート、リンクを検証。パッケージの公開やバージョン変更は含めない。
+
 ## 0.1.0
 
-- package identity を repository owner と一致する `@linhaobo0221/react-native-code-rules` に決定。
-- immutable な GitHub Tag archive の install 方法と、将来の public npm package 名を追記。
-- npm account の所有権と公開フローが明示的に確定するまで `private: true` を維持。
-- React Native / Expo 共通規約の入口と必須読み取り順序を定義。
-- 標準 `mobile/` directory、責務境界、routing 原則を定義。
-- component、styling、Figma、cross-platform interaction、accessibility、delivery 規約を定義。
-- React rendering、virtualized list、image、非同期処理、profiling の性能規約を定義。
-- unit、Hook、component、integration、race condition、native test 戦略を定義。
-- data classification、protected storage、token Auth、network、permission、privacy 規約を定義。
-- project-specific `app-specific.md` template を追加。
-- 簡体字中国語（`zh-CN`）、日本語（`ja`）、英語（`en`）の完全な規約と project template を追加。
-- device locale または code から言語を推測せず、英語 fallback を持つ明示的 `rules_language` 選択を追加。
-- `LinHaobo0221` を copyright holder とする MIT License を採用。
-- UI、Token、motion、business implementation を含まない documentation-only package を維持。
+- パッケージ名を、リポジトリの所有者に合わせて `@linhaobo0221/react-native-code-rules` に決定。
+- 内容が変わらない GitHub タグのアーカイブからインストールする方法と、将来 npm で公開する際のパッケージ名を追記。
+- npm アカウントの所有者と公開手順が明示的に確定するまで、`private: true` を維持。
+- React Native / Expo 共通規約の参照先と、必読文書を読む順序を定義。
+- 標準の `mobile/` ディレクトリ構成、役割分担、ルーティングの原則を定義。
+- コンポーネント、スタイル、Figma、両プラットフォームの操作、アクセシビリティ、成果物の提出に関する規約を定義。
+- React のレンダリング、仮想化リスト、画像、非同期処理、プロファイリングに関するパフォーマンス規約を定義。
+- ユニットテスト、Hook テスト、コンポーネントテスト、結合テスト、競合状態のテスト、ネイティブ環境でのテスト方針を定義。
+- データ分類、安全なストレージ、トークン認証、ネットワーク、権限、プライバシーに関する規約を定義。
+- プロジェクト固有の規約を記入する `app-specific.md` テンプレートを追加。
+- 簡体字中国語（`zh-CN`）、日本語（`ja`）、英語（`en`）それぞれに、規約の完全版とプロジェクト用テンプレートを追加。
+- `rules_language` による明示的な言語指定と英語へのフォールバックを追加。端末のロケールやソースコードから規約の言語を推測しない方式を採用。
+- `LinHaobo0221` を著作権者とする MIT License を採用。
+- パッケージの内容はドキュメントのみに限定し、UI、トークン、モーション、業務ロジックの実装は含めない構成を維持。

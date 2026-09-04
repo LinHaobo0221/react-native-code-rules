@@ -1,145 +1,151 @@
-# 07 Delivery and Constraints
+# 7. Rules for dependencies, change scope, and delivery
 
-> This document defines dependency constraints, change scope, checks, tests, native acceptance, and final delivery requirements.
+### 7.1 Dependency constraints
 
-## Dependency constraints
-
-- Do not add a third-party dependency without explicit approval.
-- When a dependency is needed, submit the selection rationale before installation.
-- Each workspace imports only packages declared in its own `package.json`.
-- Do not rely directly on a package merely because it exists in the root or another workspace's hoisted `node_modules`.
+- Do not add third-party dependencies without explicit approval.
+- If a new dependency is needed, explain why you chose it before installing it.
+- Each workspace may import only packages declared in its own `package.json`.
+- Do not depend on packages hoisted from the root or other workspaces.
 - Avoid duplicate or conflicting versions of React, React Native, Expo, and native modules.
-- UI packages, config plugins, and native modules follow the current Expo workflow; do not independently switch among managed / prebuild / bare strategies.
+- UI packages, config plugins, and native modules must follow the current Expo workflow.
+- Do not switch between managed / prebuild / bare without authorization.
+- Do not add a DI container, state machine library, Repository framework, or UI library just to use a design pattern. Avoid new dependencies when the language and existing project tools are sufficient.
 
-A dependency proposal includes at least:
+The explanation for choosing a dependency must cover at least:
 
-- Compatibility with current Expo / React Native
+- Expo / React Native compatibility
 - iOS / Android support
-- Whether native code or a config plugin is included
+- Whether it contains native code or a config plugin
 - Performance and bundle-size impact
-- Maintenance activity and upgrade risk
-- Whether existing dependencies or native APIs already satisfy the need
-- Installation, configuration, EAS, and rollback cost
+- Maintenance activity and upgrade risks
+- Whether existing dependencies or native implementations can meet the need
+- Installation, configuration, EAS, and rollback costs
 
-Without approval, provide a recommendation only; do not install it.
+Without approval, you may recommend a dependency but must not install it.
 
-## Project boundaries
+### 7.2 Project boundaries
 
-- `mobile/` is the mobile source boundary and must not directly import backend Node-only internal files.
-- Cross-workspace sharing uses public package exports.
-- Do not change monorepo workspace boundaries for one screen.
-- Do not independently change build, EAS, native project, or signing configuration.
+- Treat `mobile/` as the source of truth for the mobile app; do not directly import Node-only internal backend files.
+- Cross-workspace sharing must use public package exports.
+- Do not change monorepo workspace boundaries for a single page.
+- Do not change build, EAS, native-project, or signing configuration without authorization.
 - Do not commit `.expo`, build outputs, temporary exported assets, or local credentials.
-- Do not write tokens, passwords, keys, personal data, or environment-variable values into code, logs, or documentation.
+- Do not put tokens, passwords, keys, personal information, or environment-variable values in code, logs, or documentation.
+- Do not bypass feature boundaries through a global EventBus, module singleton, or implicit barrel export.
 
-## Change scope
+### 7.3 Change scope
 
-- Preserve unrelated existing changes in the repository.
-- Do not run destructive Git operations to clean another person's work.
-- Do not format unrelated files broadly for a local task.
-- When the same root cause affects several screens in one flow, fix them within an explicit boundary and list that scope at delivery.
-- If completion requires changing an API, data structure, dependency, or project architecture, obtain approval before implementation.
+- Preserve existing changes unrelated to the task.
+- Do not use destructive Git operations to discard someone else's work.
+- Do not reformat unrelated files for a narrowly scoped change.
+- When one root cause affects multiple consumers of a flow, shared component, or shared Use Case, review those consumers together within a clearly defined scope and list what that scope includes.
+- Shared-code migrations must remove the duplicate implementations they replace or document a phased migration plan and the conditions for ending the transition.
+- Obtain confirmation before changing APIs, data structures, dependencies, or project architecture.
 
-## Code-generation workflow
+### 7.4 Code generation workflow
 
-### 1. Read and analyze
+1. Read shared standards, project rules, and relevant existing code.
+2. Inspect packages, path aliases, tests, build configuration, and existing workspace changes.
+3. Search for reusable code before adding UI, hooks, utilities, or business operations; list candidates and explain why you will or will not use them.
+4. Trace the call path for each major user action and choose a direct handler, Controller, Use Case, Reducer, Strategy, Adapter, or Repository; explain the need for each pattern.
+5. For Figma tasks, complete the full node-inspection workflow and map Figma components/variants to existing or new code abstractions.
+6. Before implementation, explain where code will go, each file's responsibility, the reuse review, action flows, uncertainties, and assumptions.
+7. Meet the requirements with the smallest necessary changes; keep a single point of orchestration for each action.
+8. When extracting shared code, update all target consumers and remove the old duplicate versions; do not leave two sources of truth without explanation.
+9. Remove pass-through functions that add no meaning, handlers that are just aliases, and dead code created by this change.
+10. Give assets descriptive names and update their references within the same task.
+11. Run the project's existing format, lint, typecheck, test, Expo config, bundle, and native checks.
+12. Review the actual call chains for major actions, all direct consumers of shared components, and iOS / Android behavior.
+13. Distinguish newly introduced problems from existing repository problems; do not hide regressions behind pre-existing errors.
 
-- Read shared rules, project-specific rules, and relevant existing code.
-- Inspect package, path alias, test, and build configuration.
-- For a Figma task, complete the node-inspection workflow.
-- Inspect existing working-tree changes to avoid overwriting them.
+Example pre-implementation output:
 
-### 2. Map directories
+```text
+Reuse review: reuse shared/ui/Button; extract feature/ui/ProfileField;
+              do not merge HomeCard and ProfileCard because their state contracts
+              and expected future changes differ.
+Action path: ProfileEditorView.onSubmit
+             -> useProfileEditorController.actions.submit
+             -> updateProfile use case
+             -> profileApi.update
+             -> typed result
+             -> reducer + navigation
+Pattern rationale: validation, a submission lock, an API call, cache replacement, and error mapping
+                   justify a Use Case; mutually exclusive states justify a Reducer;
+                   there are no multiple data sources, so no Repository is needed.
+```
 
-Before editing, identify:
+### 7.5 Match testing effort to risk
 
-- Files to create and modify
-- Responsibility of each file
-- Why each item belongs in feature / shared / route
-- Components, Hooks, Tokens, and assets to reuse
-- Unknowns and assumptions
+- Pure styling changes: lint, typecheck, and native visual checks for the target page.
+- Feature UI: tests for state, callbacks, disabled behavior, accessibility, variants, and platform branches.
+- Shared UI: test public contracts and inspect all direct consumers; testing only the component itself is insufficient.
+- Hook / Controller: page-state mapping, race conditions, cleanup, user actions, and navigation/feedback outcomes.
+- Use Case: pure unit tests for step order, success, failure, idempotency, error mapping, and boundaries around calls to dependencies.
+- Reducer / Model: valid transitions, illegal combinations, selectors, and invariants.
+- Strategy / Adapter / Repository: consistent contracts, switching implementations, and mapping external errors.
+- Navigation: entry points, back, replace, modal dismissal, and system back.
+- API: request contracts, runtime validation, loading, errors, expired or invalid authentication, and concurrent behavior.
 
-### 3. Implement
+Do not test only the happy path. For bug fixes, prioritize regression tests that cover the root cause. Tests should verify public behavior and invariants, not internal call chains that have no behavioral significance.
 
-- Complete the requirement with the smallest necessary change.
-- Follow existing formatting, types, tests, and comment style.
-- Do not add unapproved dependencies or business expansion.
-- Give assets semantic names and wire them in during the same task.
+### 7.6 Figma delivery requirements
 
-### 4. Verify
-
-Run existing project commands appropriate to risk:
-
-- formatter / format check
-- lint
-- TypeScript typecheck
-- unit / integration tests
-- Expo config or bundle checks
-- iOS / Android native run checks
-
-Concrete commands must be recorded in project-specific rules; do not assume every project uses the same tools.
-
-If existing failures are present, distinguish:
-
-- Problems introduced by the current change
-- Pre-existing problems unrelated to the change
-
-Do not use “the project was already failing” to hide a new regression.
-
-## Test requirements
-
-Match test depth to change risk:
-
-- Pure styling: lint, typecheck, and native visual acceptance on the target screen
-- Interactive component: state, callbacks, disabled, accessibility, and platform branches
-- Hook: derived state, races, cleanup, success, and failure branches
-- Navigation: entry, back, replace, modal close, and system back
-- API: request contract, loading, errors, Auth invalidation, and concurrency
-- Shared component change: inspect every direct consumer
-
-Do not verify only the happy path. A bug fix should add a regression test that covers the root cause whenever possible.
-
-## Figma delivery requirements
-
-After a Figma screen task, state:
+After completing a Figma page, explain:
 
 - Completed nodes and states
-- Reused or new components
+- Reused tokens, primitives, patterns, and feature components
+- Why new components could not reuse existing implementations
 - New local assets
 - Deviations from Figma and their reasons
-- iOS / Android verification
-- Whether sibling screens in the same flow were inspected
+- iOS / Android verification status
+- Whether sibling pages in the same flow and shared-component consumers were checked
 
-When the official Figma node was unavailable, label the implementation as a screenshot- or description-based fallback and identify what still requires official alignment.
+If the source Figma nodes are inaccessible, use screenshots or descriptions as the fallback and clearly identify what still needs to be checked against the source design.
 
-## Definition of done
+### 7.7 Definition of done
 
-A task is complete only when:
+Work is complete only when all of the following hold:
 
-- Files are in the correct directories
-- Route and navigation hierarchy are correct
-- Component responsibilities and state ownership are clear
-- No unapproved dependency was added
-- No duplicate Token or business source of truth was scattered
-- Key interactions actually work
-- iOS / Android risks are handled or explicitly documented
-- Accessibility and test entry points cover key controls
-- Relevant checks pass, or pre-existing failures are isolated and documented
-- The final response lists key files, verification results, and remaining deviations
+- Files are in the correct directories with clear dependency direction.
+- Routes and navigation hierarchy are correct.
+- Reuse searches are complete; new abstractions have clear semantics, consumers, and reasons to change.
+- Shared functionality sits at the lowest stable layer; code is not shared merely for the sake of reuse.
+- Replaced duplicate implementations have been deleted, or migration exceptions recorded.
+- Component responsibilities, state ownership, and main action paths are clear.
+- Each complex user action has a single point of orchestration, with no chains of pass-through wrappers.
+- Each design pattern addresses actual complexity that can be explained; no architecture is added for its own sake.
+- No unapproved dependencies were added.
+- No new duplicate tokens, business rules, or sources of truth for business data are scattered throughout the code.
+- Key interactions genuinely work.
+- iOS / Android risks have been handled or explicitly explained.
+- Accessibility and test entry points cover key controls.
+- Relevant checks pass, or pre-existing failures have been isolated and explained.
+- The final response lists key files, reuse decisions, action flows, verification results, and remaining deviations.
 
-## Prohibited
+### 7.8 Prohibited practices
 
-Do not:
+Prohibited:
 
-- Generate code without reading project rules
-- Put a complete screen implementation in an `app/` route entry
-- Hide a tab bar with styling or conditional-unmount hacks
-- Put screen business logic into Shared UI
-- Copy another App's Tokens, fonts, or motion as defaults
-- Replace official Figma assets with approximate online icons
-- Draw device system UI manually
-- Treat a Web screenshot as final native acceptance
-- Cover only one platform without stating the scope
-- Add a dependency to avoid a solution already possible with the project
-- Create unconfirmed real APIs, storage, permissions, analytics, or business flows
-- Refuse appropriate splitting when complexity clearly increases
+- Generating code without reading project rules and searching existing code
+- Placing complete page implementations in `app/` route entry points
+- Adding similar Buttons, Cards, Rows, Modals, Inputs, or EmptyStates without evaluating existing components
+- Merging business components only because they look similar or occur twice
+- Creating one-size-fits-all components for multiple pages with excessive booleans, route checks, render overrides, and style escape hatches
+- Putting page business logic in shared UI
+- Using chains of pass-through aliases that forward the same arguments, such as `handleX -> doX -> executeX -> service.x`
+- Creating `helpers`, `common`, `manager`, `service`, or Facades without clear responsibilities
+- Wrapping a single API call in a Use Case, Repository, Factory, class, or interface just to demonstrate a design pattern
+- Using an EventBus, Context, or module singleton to hide control flow that can be expressed directly
+- Executing requests, navigation, storage, or other side effects inside Reducers
+- Controlling toasts, dialogs, component state, or Expo Router inside Use Cases
+- Copying another app's tokens, fonts, or motion as defaults
+- Replacing source Figma assets with look-alike icons found online
+- Hand-drawing device system UI
+- Treating web screenshots as final native acceptance evidence
+- Handling only one platform without explaining the scope
+- Adding dependencies for problems the project can already solve with its existing tools
+- Creating unconfirmed real APIs, storage, permissions, analytics, or business flows
+- Refusing to split code when growing complexity warrants it, or forcing architectural layers onto simple cases
+
+---

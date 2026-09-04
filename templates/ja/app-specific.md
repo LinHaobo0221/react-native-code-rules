@@ -1,229 +1,259 @@
-# App 固有モバイル規約
+# アプリ固有のモバイル開発規約
 
-> 本テンプレートを利用側プロジェクトの `mobile/docs/agents/app-specific.md` へコピーします。例示用の説明を削除し、現在の App の実設定を記入してください。未決定の項目は「未決定」と記載し、別 App の設定で代用しません。
+> このテンプレートをプロジェクトの `mobile/docs/agents/app-specific.md` または同等のプロジェクト固有文書にコピーし、対象アプリの実際の設定を記入してください。決まっていない内容は「未確定」と記載し、別のアプリの設定で代用しないでください。以下の 22 項目は、開発規約（完全版）の第 11 節にある各項目に対応しています。
 
 ## 1. プロジェクト情報
 
 - 規約言語：`ja`
-- App 名：
-- mobile workspace path：`mobile/`
-- package 名：
+- アプリ名：
+- `mobile/` のパス：
+- パッケージ名：
 - Expo SDK：
 - React Native：
 - React：
-- package manager：
-- native workflow：managed / prebuild / bare
+- パッケージマネージャー：
+- ネイティブワークフロー：
 
-## 2. 必読プロジェクト文書
+## 2. 必読文書
 
-mobile code 生成前に追加で読むべき project document：
+- アーキテクチャ：
+- API の契約：
+- データとストレージ：
+- キーボードのレイアウト：
+- テスト規約：
+- リリース規約：
 
-- Architecture：
-- API contract：
-- Data / storage strategy：
-- Keyboard layout guide：
-- Testing：
-- Release：
+## 3. ディレクトリとパスエイリアス
 
-## 3. ディレクトリと path alias
+- 標準構成を採用しているか：
+- 承認済みの追加ディレクトリ：
+- `model` の使用条件：
+- `use-cases` の使用条件：
+- パスエイリアス：
+- `index.tsx` の規約：
+- ページのエクスポート規約：
 
-- 共通 `mobile/` 標準構成を完全採用するか：
-- 承認済み追加 directory：
-- path alias：
-- route file で `index.tsx` を許可するか：
-- Page export 規約：
+## 4. ルーティングとナビゲーション
 
-差異がある場合、理由と適用範囲を記録します。
-
-## 4. Routing と navigation
-
-- Expo Router route groups：
+- ルートグループ：
 - Root Stack：
 - Tabs：
-- 各 tab の Stack：
-- cross-tab full-screen screen：
-- route-level Modal：
-- route constant file：
-- default push / replace / modal animation：
-- gesture と system-back 要件：
+- Tab Stack：
+- タブをまたぐページ：
+- Modal：
+- ルート定数：
+- アニメーションの要件：
+- 戻る操作の要件：
 
-## 5. Design Token
+## 5. デザイントークン
 
-- Token code source of truth：
+- コード上で正とする定義：
 - Figma Variables / Library：
-- color：
-- spacing：
-- radius：
-- shadow / elevation：
-- typography：
-- z-index / layer：
-- light / dark / brand mode：
-
-すべての Token 値を複製せず、事実源と命名体系を記録します。
+- 色：
+- 間隔：
+- 角丸：
+- 影：
+- タイポグラフィ：
+- z-index：
+- テーマモード：
 
 ## 6. フォントと言語
 
-- support language：
-- loaded font：
-- 各言語の default font：
-- English / numeric display font：
-- weight mapping：
-- fallback strategy：
-- dynamic type / maximum scale strategy：
+- 対応言語：
+- フォント：
+- フォールバック：
+- フォントウェイトの対応表：
+- 動的な文字サイズ：
+- 最大拡大率：
 
 ## 7. モーション
 
-- motion Token の事実源：
-- navigation transition：
+- モーショントークン：
+- ナビゲーション：
 - Modal / Sheet：
-- press feedback：
-- loading / skeleton：
-- reduce motion：
-- prohibited implementation：
+- 押下時のフィードバック：
+- ローディング：
+- モーション軽減：
+- 禁止する実装：
 
-## 8. Styling と基礎コンポーネント
+## 8. スタイリングと基本コンポーネント
 
-- default styling system：
-- global theme entry：
-- 既存 common Button：
-- 既存 common Input：
-- 既存 Switch / Checkbox / Radio：
-- 既存 Image / Avatar：
-- 既存 Modal / Sheet：
-- 既存 keyboard-aware component：
-- 既存 loading / empty / error component：
+- スタイリング方式：
+- スタイルを同じファイルに置くか、別ファイルに分けるかの規約：
+- テーマのエントリーポイント：
+- Button のエントリーポイント：
+- Input のエントリーポイント：
+- Switch のエントリーポイント：
+- Checkbox のエントリーポイント：
+- Radio のエントリーポイント：
+- Image のエントリーポイント：
+- Avatar のエントリーポイント：
+- Modal のエントリーポイント：
+- Sheet のエントリーポイント：
+- キーボード対応のエントリーポイント：
+- ローディング表示のエントリーポイント：
+- データなし表示のエントリーポイント：
+- エラー表示のエントリーポイント：
 
-feature screen は上記 entry を優先して再利用し、並行する別 version を作りません。
+## 9. 共通コンポーネント一覧
 
-## 9. 画像、SVG、icon
+- 公開するプリミティブ・パターン：
+- 公開エントリーポイント：
+- 直接利用している箇所：
+- バリアント：
+- 非推奨コンポーネント：
+- コンポーネントの使用例の場所：
+- スタイルの例外的な上書き方針：
 
-- asset directory：
-- SVG integration：
-- allowed icon source：
-- multi-density bitmap rule：
-- placeholder / fallback：
-- 追加 file naming rule：
+## 10. 画像、SVG、アイコン
 
-## 10. Data、API、state
+- アセットディレクトリ：
+- SVG の組み込み方法：
+- アイコンの入手元：
+- 複数解像度のビットマップ：
+- プレースホルダー：
+- フォールバック：
+- 命名規則：
 
-- API client：
-- response envelope：
-- query / mutation Hook 規約：
-- Auth strategy：
-- token storage：
-- key-value storage：
-- structured offline data：
-- file cache：
-- scoped event / state mechanism：
-- prohibited state / storage mechanism：
+## 11. データ、API、状態
 
-未承認の data strategy は実装前に個別確認します。
+- API クライアント：
+- レスポンスの共通形式：
+- Controller の使用条件：
+- Use Case の使用条件：
+- Reducer の使用条件：
+- Strategy の使用条件：
+- Adapter の使用条件：
+- Repository の使用条件：
+- 認証：
+- トークン：
+- KV：
+- オフラインデータ：
+- ファイルキャッシュ：
+- スコープ付きイベント・状態：
+- 禁止する方式：
 
-## 11. Platform 設定
+## 12. 制御フローの規約
 
-- minimum iOS version：
-- minimum Android version / API level：
-- edge-to-edge：
-- StatusBar / system navigation：
-- safe-area base shell：
-- permission handling：
-- known platform difference / fallback：
+- 主要な操作の経路：
+- Controller の戻り値の構造：
+- Use Case の結果の規約：
+- エラーマッピング：
+- ナビゲーションを担当する層：
+- 送信ロック：
+- キャンセルの規約：
+- 古い結果の扱いに関する規約：
 
-## 12. 性能とレンダリング
+## 13. 再利用戦略
 
-- target device と minimum device tier：
-- critical performance path：
-- release profiling build method：
-- profiling tool：
-- startup、frame-rate、memory、interaction budget：
-- large-list の typical / maximum data volume：
-- virtual-list implementation：
-- image loading、cache、thumbnail strategy：
-- cache owner、capacity、cleanup：
-- known performance risk / acceptance scenario：
+- 再利用候補の検索範囲：
+- Feature First：
+- shared に移す条件：
+- 移行手順：
+- shared のコードを feature に戻す手順：
+- 許可するスロット・バリアント：
+- 重複コードを見直す条件：
 
-## 13. テスト戦略
+## 14. プラットフォーム設定
 
-- test runner：
-- unit / Hook test：
-- component test：
-- integration test：
-- E2E tool：
-- native module mock：
-- global setup / cleanup：
-- test file include rule：
-- test ID naming：
-- coverage strategy：
-- flaky test handling：
-- iOS / Android acceptance matrix：
-- CI required check：
+- iOS の最低バージョン：
+- Android の最低バージョン：
+- エッジツーエッジ：
+- StatusBar：
+- システムナビゲーション：
+- セーフエリア：
+- 権限：
+- プラットフォーム間の差異：
 
-## 14. セキュリティとプライバシー
+## 15. 性能とレンダリング
 
-- data classification / sensitive field 一覧：
-- Auth / session contract：
-- protected storage：
-- regular KV / database / file cache：
-- API base URL / approved origin：
-- development HTTP exception：
-- deep link / universal link allowlist：
-- WebView strategy：
-- permission 一覧と request timing：
-- logging / analytics / crash redaction：
-- third-party SDK data scope / consent：
-- logout / account switch / deletion cleanup：
-- backup / device migration / biometric：
-- OWASP MASVS 適用範囲または他 security baseline：
+- 対象デバイス：
+- 性能上重要な操作経路：
+- リリースビルドでのプロファイリング：
+- ツール：
+- 性能上の許容上限：
+- リストの規模：
+- 仮想化リスト：
+- 画像キャッシュ：
+- キャッシュの管理主体：
+- クリーンアップ方針：
 
-## 15. 依存関係の制約
+## 16. テスト戦略
 
-- approved UI / animation / gesture package：
-- approved native module：
-- new dependency approval：
-- workspace dependency rule：
-- Expo config plugin rule：
+- テストランナー：
+- 各テスト層のツール：
+- Use Case のテスト：
+- Reducer のテスト：
+- Controller のテスト：
+- ネイティブのモック：
+- セットアップ・クリーンアップ：
+- テスト対象ファイルの選択条件：
+- テスト ID：
+- カバレッジ：
+- 不安定なテスト：
+- 両プラットフォームの受け入れテストマトリクス：
+- CI チェック：
 
-## 16. Figma ワークフロー
+## 17. セキュリティとプライバシー
 
-- Figma team / project：
+- データ分類：
+- 認証の契約：
+- 保護されたストレージ：
+- KV・データベース・キャッシュ：
+- API オリジン：
+- HTTP の例外：
+- ディープリンク：
+- WebView：
+- 権限：
+- ログのマスキング：
+- SDK の同意取得：
+- ログアウト時のクリーンアップ：
+- 削除時のクリーンアップ：
+
+## 18. 依存パッケージの制約
+
+- 使用を認める UI パッケージ：
+- 使用を認めるアニメーションパッケージ：
+- 使用を認めるジェスチャーパッケージ：
+- 許可するネイティブモジュール：
+- 新しい依存パッケージの承認手順：
+- ワークスペースの依存関係の規約：
+- Expo config plugin の規約：
+
+## 19. Figma ワークフロー
+
+- チーム・プロジェクト：
 - Design Library：
-- screen file：
+- ページファイル：
 - Dev Mode / Code Connect：
-- asset export permission / directory：
-- Token alignment owner / process：
-- visual acceptance device：
+- アセットのエクスポート権限：
+- トークンと共通コンポーネントを整合させる手順：
+- 見た目の受け入れ確認に使用する端末：
 
-## 17. 検証とデリバリー command
+## 20. 検証と成果物の提出に使うコマンド
 
-~~~bash
-# format
+- フォーマット：
+- Lint：
+- 型チェック：
+- テスト：
+- 依存境界：
+- iOS：
+- Android：
+- 提出前に最低限必要なチェック：
+- CI チェック：
+- 既存の問題の記録場所：
 
-# lint
+## 21. プロジェクト固有の禁止事項
 
-# typecheck
+- プロジェクト固有の禁止事項：
 
-# test
+## 22. 承認済みの例外
 
-# iOS
-
-# Android
-~~~
-
-- minimum delivery check：
-- CI required check：
-- known pre-existing issue の記録場所：
-
-## 18. プロジェクト固有の禁止事項
-
-- プロジェクト固有の禁止事項を記入します。
-
-## 19. 承認済み例外
-
-各例外について記録します。
+例外ごとに以下を記録します。
 
 - 共通規約：
-- 理由：
-- 適用範囲：
-- 代替策：
+- 例外の理由：
+- 影響範囲：
+- 代替措置：
 - 受け入れ確認方法：
-- 期限または再確認条件：
+- 有効期限または再確認条件：

@@ -2,39 +2,39 @@
 
 [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · **English**
 
-Versioned, multilingual code-generation standards for React Native and Expo projects. This repository defines structure, responsibilities, implementation workflows, and quality standards. It does not ship UI implementations, Design Tokens, motion values, brand assets, or business logic.
+Shared code-generation standards for React Native and Expo projects. This repository defines code structure, responsibilities, implementation workflows, and quality requirements. It does not provide UI implementations, design tokens, motion parameters, brand assets, or business logic.
 
 Current version: `0.1.0`
 
 ## Scope
 
-These rules apply to mobile projects built with React Native and Expo, especially teams that implement screens from Figma, organize navigation with Expo Router, and want consistent code structure across multiple Apps.
+These rules apply to mobile projects built with React Native and Expo. They are particularly useful for teams that build screens from Figma designs, organize routes with Expo Router, and want a consistent code structure across apps.
 
 The shared package covers:
 
 - A standard `mobile/` directory structure
-- Page / UI / Hook / Data / Shared responsibility boundaries
+- Responsibilities of Page / UI / Controller / Use Case / Model / API / Shared
 - Component, file, props, and styling conventions
-- General Expo Router organization
-- Figma inspection, node analysis, asset export, and delivery workflow
-- Cross-platform iOS / Android behavior, keyboard handling, Modal, safe area, and accessibility
-- Performance, rendering, lists, images, and resource lifecycle
-- Layered testing, race-condition testing, and native acceptance
-- Secure storage, Auth, networking, permissions, and privacy baselines
+- General principles for organizing routes with Expo Router
+- Figma inspection, node analysis, asset exports, and delivery workflows
+- iOS and Android behavior, keyboard handling, modals, safe areas, and accessibility
+- Performance, rendering, lists, images, and resource lifecycles
+- Testing at each layer, race-condition tests, and native acceptance testing
+- Baseline requirements for secure storage, authentication, networking, permissions, and privacy
 - Dependency, validation, and delivery constraints
 
-Each App defines:
+Each app defines its own:
 
-- Design Tokens such as colors, typography, spacing, radius, and shadows
+- Design tokens, including colors, fonts, spacing, corner radii, and shadows
 - Motion duration, easing, and transition values
 - Brand components, images, SVGs, and fonts
 - Route groups, paths, and tab names
-- APIs, Auth, local storage, and business-state strategies
+- API, authentication, local storage, and business-state management strategies
 - Performance budgets, target devices, and profiling tools
-- Test runners, component / E2E tools, and CI gates
+- Test runners, component and E2E testing tools, and CI requirements
 - Data classification, permissions, third-party SDKs, and security risk levels
 - Expo / React Native versions and approved dependencies
-- Figma Library, files, pages, and links
+- Figma libraries and links to files and pages
 
 ## Languages
 
@@ -44,7 +44,7 @@ The package ships equivalent rules in:
 - Japanese: `ja`
 - English: `en`
 
-Each consuming repository must explicitly declare `rules_language` and point to one localized `AGENTS` entry. Do not select a language from device locale or infer it from source code. English is the fallback when no supported language is declared.
+Each repository using these rules must explicitly set `rules_language` to a supported language and reference the corresponding `AGENTS` file. Do not infer the rules language from the device locale, source code, or a single user message.
 
 ## Repository structure
 
@@ -70,9 +70,13 @@ react-native-code-rules/
     └── en/
 ~~~
 
-Each locale contains the same ten numbered rule documents and one project-specific template.
+Each `docs/<locale>/` directory contains the same 13 rule documents, numbered `00` through `12`, and a `README.md` index. Its project-specific template is at `templates/<locale>/app-specific.md`.
 
-## Use in an App
+Start with the `AGENTS` file for your language, then read all of `00`, the mandatory core rules. Follow the AGENTS file's reading instructions for required and task-specific chapters of the engineering standards. For high-risk tasks, read all of `01` through `12`. File `12` also includes the summary from section 13 of the source document. Reading the index does not replace reading the chapters themselves.
+
+Start here for English: [AGENTS.en.md](AGENTS.en.md). See the [engineering standards index](docs/en/README.md) for the chapter mapping and notes on preserving the source documents. The rules revision, `v2.0 (2026-09-04)`, is tracked separately from package version `0.1.0`. This reorganization does not publish the package or automatically update its version.
+
+## Using the rules in your app
 
 Version `0.1.0` remains marked `private` to prevent accidental npm registry publication until npm account ownership and the publication workflow are confirmed. Try it from a local path:
 
@@ -80,21 +84,21 @@ Version `0.1.0` remains marked `private` to prevent accidental npm registry publ
 npm install --save-dev ../react-native-code-rules
 ~~~
 
-After the corrected `v0.1.0` GitHub release is published, install its immutable HTTPS tag archive:
+Once the corrected `v0.1.0` GitHub release is republished, you can pin that version by installing its immutable tag archive over HTTPS:
 
 ~~~bash
 npm install --save-dev https://github.com/LinHaobo0221/react-native-code-rules/archive/refs/tags/v0.1.0.tar.gz
 ~~~
 
-After publication to the public npm registry, install the lowercase scoped package:
+Once the package is published to the public npm registry, install it using the lowercase scoped package name:
 
 ~~~bash
 npm install --save-dev @linhaobo0221/react-native-code-rules@0.1.0
 ~~~
 
-Installing the package alone does not activate its rules. The consuming repository must reference the correct localized entry in its own `AGENTS.md`.
+Installing the package does not activate the rules automatically. Your repository's `AGENTS.md` or `mobile/AGENTS.md` must explicitly instruct code-generation tools to read the package's rules, starting with the file for the correct language.
 
-English example:
+English example (read both files in full, in the order shown):
 
 ~~~md
 # Mobile rules entry
@@ -109,7 +113,7 @@ Before modifying `mobile/`, read these files in full:
 
 For Chinese use `rules_language: zh-CN` with `AGENTS.zh-CN.md`. For Japanese use `rules_language: ja` with `AGENTS.ja.md`.
 
-Copy the matching template into the consuming project:
+The shared rules define code structure and minimum quality requirements; the project-specific document records your app's design and engineering facts. Copy the matching template to `mobile/docs/agents/app-specific.md` in your project and fill in the project-specific details:
 
 - [Chinese template](templates/zh-CN/app-specific.md)
 - [Japanese template](templates/ja/app-specific.md)
@@ -117,12 +121,23 @@ Copy the matching template into the consuming project:
 
 ## Rule precedence
 
-1. Explicit requirements and constraints in the current user task
-2. More specific `AGENTS.md` and `app-specific.md` files in the consuming repository
-3. This package's shared rules
-4. Conservative engineering judgment for anything not covered above
+1. Explicit requirements, constraints, and acceptance criteria in the current user task
+2. The nearest applicable `AGENTS.override.md` / `AGENTS.md` on the target file's path
+3. Verifiable facts in the current repository, including code, configuration, API contracts, tests, and approved architecture documents
+4. The chapters that make up this package's full engineering standards
 
-Project-specific rules may choose Tokens, motion, and technologies, but should not silently lower the shared baseline for maintainability, accessibility, or cross-platform quality. Record the reason, scope, and acceptance method for approved exceptions.
+The core rules must be followed before every coding task. They do not reduce or relax the full standards. Follow the `AGENTS` file for your language for detailed instructions.
+
+Project-specific rules may define tokens, motion, and technology choices, but should not silently lower the shared minimum requirements for maintainability, accessibility, or quality on both platforms. If an exception is necessary, record its reason, scope, and how it will be verified for acceptance.
+
+## Documentation checks
+
+```bash
+npm run docs:check
+npm run pack:check
+```
+
+The first command checks the Chinese chapters against the preserved source documents. It also checks structure and code examples across languages, relative links, and templates. The second previews the package contents without publishing. A human review is still needed to confirm that translations preserve the meaning; structural checks alone cannot establish that.
 
 ## License
 
@@ -134,4 +149,4 @@ Released under the [MIT License](LICENSE). Commercial and non-commercial use, mo
 - Minor: compatible rules, optional directories, or new implementation checks
 - Major: changes to the standard directory structure, responsibility boundaries, required reading order, or other breaking requirements
 
-Each App should pin a rules version and review upgrades through a Pull Request rather than using an uncontrolled floating version.
+Each app should pin a specific rules version and review rule changes in a pull request before upgrading. Do not use a floating version that can update without review.
