@@ -1,145 +1,149 @@
-# 07 デリバリーと制約
+# 7. 依存関係、変更範囲、成果物の引き渡しに関するルール
 
-> 本文書は依存関係、変更範囲、check、test、native 受け入れ確認、最終デリバリー要件を定義します。
+### 7.1 依存パッケージの制約
 
-## 依存関係の制約
+- 明示的な承認なしに、サードパーティの依存パッケージを追加しない。
+- 新しい依存パッケージが必要な場合は、先に選定理由を提示してからインストールする。
+- 各ワークスペースでインポートできるのは、そのワークスペースの `package.json` に宣言されたパッケージだけである。
+- ルートや別のワークスペースからホイストされたパッケージに依存してはならない。
+- React、React Native、Expo、ネイティブモジュールのバージョンの重複や競合を避ける。
+- UI パッケージ、config plugin、ネイティブモジュールは、現在の Expo ワークフローに従って使用する。
+- managed / prebuild / bare を独断で切り替えない。
+- 特定のデザインパターンを使うことを目的に、DI コンテナ、状態マシンのライブラリ、Repository フレームワーク、UI ライブラリを導入しない。現在の言語とプロジェクトの機能で対応できる場合は、依存パッケージを追加せずに実装する。
 
-- 明示的な承認なしに third-party dependency を追加しません。
-- dependency が必要なら、install 前に選定理由を提示します。
-- 各 workspace は自分の `package.json` に宣言された package だけを import します。
-- root または別 workspace の hoisted `node_modules` に package が存在するだけで直接依存しません。
-- React、React Native、Expo、native module の重複または競合 version を避けます。
-- UI package、config plugin、native module は現在の Expo workflow に従い、managed / prebuild / bare strategy を独自に切り替えません。
+依存パッケージの選定では、少なくとも次を説明する。
 
-dependency の提案には最低限次を含めます。
+- Expo / React Native との互換性
+- iOS / Android への対応
+- ネイティブコードや config plugin の有無
+- 性能とパッケージサイズへの影響
+- メンテナンスの状況とアップグレード時のリスク
+- 現在の依存パッケージやネイティブ実装で対応できるか
+- インストール、設定、EAS、ロールバックにかかるコスト
 
-- 現在の Expo / React Native との互換性
-- iOS / Android support
-- native code または config plugin を含むか
-- 性能と bundle size への影響
-- maintenance activity と upgrade risk
-- 既存 dependency または native API で満たせるか
-- install、configuration、EAS、rollback cost
+承認を得るまでは提案にとどめ、実際にインストールしてはならない。
 
-承認前は提案だけを行い、実際に install しません。
+### 7.2 プロジェクトの境界
 
-## プロジェクト境界
+- モバイル側の実装を判断する対象範囲は `mobile/` とする。バックエンドの Node.js 専用の内部ファイルを直接インポートしてはならない。
+- ワークスペース間で共有する場合は、パッケージの公開エクスポートを必ず経由する。
+- 1 つのページのために、モノレポのワークスペース境界を変更しない。
+- ビルド、EAS、ネイティブプロジェクト、署名の設定を独断で変更しない。
+- `.expo`、ビルド出力、一時的にエクスポートしたアセット、ローカルの認証情報をコミットしない。
+- トークン、パスワード、鍵、個人情報、環境変数の値をコード、ログ、文書に書き込まない。
+- グローバルな EventBus、モジュール単位のシングルトン、暗黙的なバレルエクスポートで feature の境界を迂回しない。
 
-- `mobile/` は mobile の事実範囲であり、backend の Node-only internal file を直接 import しません。
-- cross-workspace 共有は public package exports を使用します。
-- 1 画面のために monorepo workspace 境界を変更しません。
-- build、EAS、native project、signing configuration を独自に変更しません。
-- `.expo`、build output、一時 export asset、local credential を commit しません。
-- token、password、key、personal data、environment variable value を code、log、documentation に書きません。
+### 7.3 変更範囲
 
-## 変更範囲
+- タスクと無関係な既存の変更はそのまま残す。
+- 他者の作業を消すために、破壊的な Git 操作を行わない。
+- 局所的な要件を理由に、無関係なファイルを広範囲にフォーマットしない。
+- 同じ根本原因が、同一フロー、共通コンポーネント、共通 Use Case の複数の利用側に影響する場合は、範囲を明確にしたうえで併せて確認し、対象を列挙すべきである。
+- 共通化に伴う移行では、置き換えた重複実装を必ず削除する。段階的に移行する場合は、その計画と移行期限・終了条件を明示しなければならない。
+- API、データ構造、依存パッケージ、プロジェクトのアーキテクチャを変更する必要がある場合は、実施前に確認を得る。
 
-- リポジトリ内のタスクと無関係な既存変更を保持します。
-- 他者の作業を整理するために destructive Git operation を実行しません。
-- 局所タスクのために無関係なファイルを大規模 format しません。
-- 同じ根本原因が 1 flow の複数画面へ影響する場合、明示した境界内で同時に修正し、デリバリー時に範囲を列挙します。
-- 完了に API、data structure、dependency、project architecture の変更が必要なら、実装前に承認を得ます。
+### 7.4 コード生成の手順
 
-## コード生成フロー
+1. 共通規約、プロジェクト規約、関連する既存コードを読む。
+2. パッケージ、パスエイリアス、テスト、ビルド設定、ワークスペースの既存変更を確認する。
+3. UI、Hook、ユーティリティ、業務操作を追加する前に再利用候補を検索し、候補と採用する／しない理由を列挙する。
+4. 主要なユーザー操作の呼び出し経路を示し、直接のハンドラー、Controller、Use Case、Reducer、Strategy、Adapter、Repository のどれを使うかを決める。各パターンについて、導入が必要となる理由を記載する。
+5. Figma のタスクでは、ノード確認の全手順を実施し、Figma のコンポーネントとバリアントを、既存または新規のコード上の抽象化に対応付ける。
+6. 実装前に、ディレクトリの対応関係、ファイルの責務、再利用の検討結果、操作フロー、不確実な点、仮定を示す。
+7. 必要最小限の変更で要件を満たす。1 つの操作に対して、処理全体を統括する唯一の箇所を設ける。
+8. 共通化する際は、対象となるすべての利用側を更新し、重複する旧実装を削除する。説明のないまま、正とする情報源を二重に残さない。
+9. 独自の意味を持たない中継関数、同じ役割のハンドラー、今回の変更で生じたデッドコードを削除する。
+10. アセットは、同じタスク内で用途のわかる名前に変更し、参照も更新する。
+11. プロジェクトに既存の format、lint、typecheck、test、Expo config、bundle、ネイティブ環境のチェックを実行する。
+12. 主要な操作の実際の呼び出し経路、共通コンポーネントを直接使用するすべての箇所、iOS / Android の動作を再確認する。
+13. 今回発生した問題とリポジトリに元からある問題を区別する。既存のエラーを理由にリグレッションを見過ごしてはならない。
 
-### 1. 読み取りと分析
+実装前の説明例：
 
-- 共通規約、プロジェクト固有規約、関連既存コードを読みます。
-- package、path alias、test、build configuration を確認します。
-- Figma タスクでは完全な node 読み取りフローを実行します。
-- working tree の既存変更を確認し、上書きを避けます。
+```text
+再利用の検討：shared/ui/Button を再利用し、feature/ui/ProfileField を抽出する。
+              HomeCard と ProfileCard は状態に関する契約と今後の変更の方向性が異なるため統合しない。
+操作の経路：ProfileEditorView.onSubmit
+            -> useProfileEditorController.actions.submit
+            -> updateProfile use case
+            -> profileApi.update
+            -> typed result
+            -> reducer + navigation
+パターンの選定理由：バリデーション、送信ロック、API、キャッシュの置き換え、エラーマッピングが必要なため Use Case を使用する。
+                    状態が互いに排他的なため Reducer を使用する。複数のデータソースはないため Repository は導入しない。
+```
 
-### 2. ディレクトリ mapping
+### 7.5 リスクに応じたテスト
 
-変更開始前に次を明確にします。
+- スタイルだけの調整：lint、typecheck、ネイティブ環境での対象ページの見た目の確認。
+- Feature UI：状態、コールバック、無効状態、アクセシビリティ、バリアント、プラットフォームによる分岐のテスト。
+- Shared UI：公開契約をテストし、すべての直接の利用側を確認する。コンポーネント自体のテストだけで済ませてはならない。
+- Hook / Controller：ページの状態のマッピング、競合、クリーンアップ、ユーザー操作、ナビゲーションやフィードバックの結果。
+- Use Case：純粋な単体テストで、処理の順序、成功、失敗、冪等性、エラーマッピング、依存先を呼び出す範囲を検証する。
+- Reducer / Model：許可される状態遷移、不正な状態の組み合わせ、セレクター、不変条件を検証する。
+- Strategy / Adapter / Repository：契約の一貫性、実装の切り替え、外部エラーの変換を検証する。
+- ナビゲーション：入口、戻る操作、replace、Modal を閉じる操作、システムの戻る操作。
+- API：リクエストの契約、実行時の検証、読み込み中の状態、エラー、認証の失効、並行処理の動作。
 
-- 作成・変更するファイル
-- 各ファイルの責務
-- feature / shared / route への配置理由
-- 再利用予定の component、Hook、Token、asset
-- 不明点と仮定
+正常系だけを検証してはならない。バグ修正では、根本原因をカバーする回帰テストの追加を優先する。テストでは公開された動作と不変条件を確認すべきであり、意味のないプライベートメソッドの呼び出し経路を検証しない。
 
-### 3. 実装
+### 7.6 Figma 実装の引き渡し要件
 
-- 最小限必要な変更で要件を満たします。
-- 既存の format、type、test、comment style に従います。
-- 未承認 dependency と業務拡張を追加しません。
-- 同じタスク内で asset に意味のある名前を付け、参照を完成させます。
+Figma ページの実装後は、次を説明する。
 
-### 4. 検証
+- 実装済みのノードと状態
+- 再利用したトークン、プリミティブ、パターン、feature コンポーネント
+- 新規コンポーネントで既存実装を再利用できなかった理由
+- 追加したローカルアセット
+- Figma との差異とその理由
+- iOS / Android での検証状況
+- 同じフロー内の関連ページと、共通コンポーネントの利用側を確認したか
 
-リスクに応じてプロジェクト既存の command を実行します。
+正式な Figma ノードにアクセスできない場合は、スクリーンショットや説明に基づく代替実装にとどめ、正式なデザインとの照合がまだ必要な箇所を明示する。
 
-- formatter / format check
-- lint
-- TypeScript typecheck
-- unit / integration tests
-- Expo config または bundle check
-- iOS / Android native run check
+### 7.7 完了の定義
 
-具体的な command はプロジェクト固有規約に記録し、すべてのプロジェクトが同じ tool を使うと仮定しません。
+次の条件をすべて満たした場合に限り、完了とする。
 
-既存 failure がある場合、次を区別します。
+- ファイルが適切なディレクトリに配置され、依存の方向が明確である。
+- ルートとナビゲーションの階層が正しい。
+- 再利用候補の検索が完了し、新たな抽象化の意味、利用側、今後変更が生じる理由が明確である。
+- 共通機能が安定して共有できる最も低い層にあり、共通化自体を目的にしていない。
+- 置き換えた重複実装を削除したか、移行の例外を記録した。
+- コンポーネントの責務、状態の管理責任、主要な操作の経路が明確である。
+- 複雑なユーザー操作ごとに、処理全体を統括する唯一の箇所があり、単に呼び出しを中継するだけの処理が連なっていない。
+- デザインパターンを必要とする実際の複雑さを説明でき、形式だけの過剰設計になっていない。
+- 未承認の依存パッケージを追加していない。
+- トークン、業務ルール、業務データの正とする情報源を、新たに重複させて各所に散在させていない。
+- 主要なインタラクションが実際に動作する。
+- iOS / Android のリスクに対応済みか、その内容を明示している。
+- 主要なコントロールにアクセシビリティ対応とテスト用の識別手段がある。
+- 関連チェックに合格したか、既存の失敗を切り分けて説明している。
+- 最終回答に、主要なファイル、再利用の判断、操作フロー、検証結果、残っている差異を記載している。
 
-- 今回の変更で追加された問題
-- 今回と無関係な既存問題
+### 7.8 禁止事項
 
-「プロジェクトは以前から失敗していた」という理由で新しい regression を隠しません。
+次の行為を禁止する。
 
-## テスト要件
+- プロジェクト規約の確認と既存コードの検索を省略して、コードを生成する
+- `app/` のルートエントリーポイントに、ページ全体の実装を詰め込む
+- 既存コンポーネントを検討せずに、似た Button、Card、Row、Modal、Input、EmptyState を追加する
+- 見た目が似ている、または 2 回登場したという理由だけで、業務コンポーネントを統合する
+- 複数のページで使うために、大量の真偽値、ルート判定、描画の上書き、制限のないスタイル変更を受け付ける万能コンポーネントを作る
+- ページの業務ロジックを Shared UI に詰め込む
+- `handleX -> doX -> executeX -> service.x` のように、同じ意味・同じ引数で呼び出しを中継するだけの処理を連ねる
+- 明確な責務のない `helpers`、`common`、`manager`、`service`、Facade を作る
+- デザインパターンを使うことを目的に、1 回の API 呼び出しに Use Case、Repository、Factory、クラス、インターフェースを追加する
+- EventBus、Context、モジュール単位のシングルトンを使い、直接表現できる制御フローを隠す
+- Reducer 内でリクエスト、ナビゲーション、ストレージ操作、その他の副作用を実行する
+- Use Case 内で Toast、Dialog、コンポーネントの状態、Expo Router を操作する
+- 別のアプリのトークン、フォント、モーションをデフォルト値としてコピーする
+- オンライン上の似たアイコンで、Figma の正式なアセットを代用する
+- デバイスのシステム UI を手動で描画する
+- Web のスクリーンショットを、ネイティブ環境での最終的な受け入れ確認の代わりにする
+- 一方のプラットフォームだけに対応し、その範囲を説明しない
+- 現在のプロジェクトの機能で解決できる問題を、依存パッケージの追加で回避する
+- 確認を得ずに、実際の API、ストレージ、権限要求、計測イベント、業務フローを実装する
+- 複雑さが明らかに増しているのに適切な分割を行わない、または単純な場面にアーキテクチャの層を無理に追加する
 
-変更リスクに test 強度を合わせます。
-
-- pure style：lint、typecheck、対象画面の native visual acceptance
-- interactive component：state、callback、disabled、accessibility、platform branch
-- Hook：derived state、race、cleanup、success / failure branch
-- navigation：entry、back、replace、modal close、system back
-- API：request contract、loading、error、Auth invalidation、concurrency
-- shared component 変更：すべての direct consumer を確認
-
-happy path だけを検証しません。bug fix では可能な限り根本原因を保護する regression test を追加します。
-
-## Figma デリバリー要件
-
-Figma 画面タスク後に次を説明します。
-
-- 完成した node と state
-- 再利用または追加した component
-- 新しい local asset
-- Figma との差異と理由
-- iOS / Android 検証
-- 同 flow の sibling screen を確認したか
-
-正式 Figma node を利用できなかった場合、screenshot または description に基づく fallback であることを示し、正式な alignment が必要な内容を特定します。
-
-## 完了の定義
-
-次をすべて満たした場合だけタスク完了です。
-
-- file が正しい directory にある
-- route と navigation hierarchy が正しい
-- component responsibility と state owner が明確
-- 未承認 dependency を追加していない
-- 重複 Token または business source of truth を散在させていない
-- 主要 interaction が実際に機能する
-- iOS / Android risk を処理または明記している
-- accessibility と test entry が主要 control を覆う
-- 関連 check が成功、または既存 failure が分離・説明されている
-- 最終回答に主要 file、検証結果、残存差異がある
-
-## 禁止事項
-
-禁止：
-
-- project rule を読まずにコードを生成する
-- `app/` route entry に完全な画面実装を置く
-- style または conditional unmount hack で tab bar を隠す
-- 画面 business logic を Shared UI に置く
-- 別 App の Token、font、motion を default としてコピーする
-- 正式 Figma asset を online の近似 icon で置き換える
-- device system UI を手動描画する
-- Web screenshot を native 最終受け入れ確認にする
-- 1 platform だけ対応して範囲を説明しない
-- 現在の project 能力で解決できる問題を dependency 追加で回避する
-- 未確認の実 API、storage、permission、analytics、business flow を作る
-- 複雑性が明確に増えたとき適切な分割を拒む
+---

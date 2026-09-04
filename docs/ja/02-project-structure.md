@@ -1,12 +1,8 @@
-# 02 プロジェクトとディレクトリ構成
+# 2. 標準の `mobile/` ディレクトリ構造
 
-> 本文書は、`mobile/` の標準ディレクトリ、責務境界、依存方向、ファイル配置ルールを定義します。
+標準構造は次のとおりとする。
 
-## 標準構成
-
-React Native / Expo App は、既定で次の構成を使用します。
-
-~~~text
+```text
 mobile/
 ├── app/
 ├── features/
@@ -14,6 +10,8 @@ mobile/
 │       ├── pages/
 │       ├── ui/
 │       ├── hooks/
+│       ├── model/
+│       ├── use-cases/
 │       ├── events/
 │       ├── data/
 │       ├── constants/
@@ -40,157 +38,106 @@ mobile/
 ├── metro.config.js
 ├── tsconfig.json
 └── package.json
-~~~
+```
 
-ディレクトリは必要になった時点で作成し、構成を完全に見せるためだけに空ディレクトリをコミットしません。`api`、`auth`、`context`、`events`、`plugins` などは、プロジェクトが実際に必要とする場合だけ作成します。
+ディレクトリは必要に応じて作成し、構造を揃えるためだけに空のディレクトリをコミットしない。`model`、`use-cases`、`api`、`auth`、`context`、`events`、`plugins` などは、プロジェクトで実際に必要になった場合だけ設ける。単純なページに、ディレクトリ構造に合わせるためだけの Controller、Reducer、Use Case、Repository を無理に作る必要はない。
 
-## トップレベルの責務
+### 2.1 トップレベルディレクトリの責務
 
-### `app/`
+| ディレクトリ | ルール |
+| --- | --- |
+| `app/` | Expo Router のルートのエントリーポイント、ルートグループの `_layout`、最小限の橋渡しコードだけを置く。ページ全体の JSX、業務状態、静的な業務データ、大量のスタイルを置かない。 |
+| `features/` | 安定した製品機能またはユーザーフローごとに分ける。feature 名は業務領域を表すものとし、画面上の位置だけを表す名前にしてはならない。 |
+| `shared/` | feature をまたいで安定して再利用されている機能、またはプロジェクトで基盤／デザインシステムの一部と明確に位置づけられた機能だけを置く。置き場所が決まらないコードの仮置き場にしてはならない。 |
+| `assets/` | ローカルの画像、SVG、フォント、その他の静的アセットを置く。ファイル名は内容が明確に伝わるものにしなければならない。 |
+| `types/` | アプリ全体に適用される環境宣言、アセットのモジュール宣言、実際に層をまたいで使う共通型を置く。 |
+| `plugins/` | Expo config plugin またはビルド時の拡張を置き、実行時の業務ロジックを置かない。 |
+| `test/` | feature をまたいで使うテストツール、フィクスチャ生成ツール、テスト環境の補助機能を置く。 |
+| `docs/agents/` | プロジェクト固有のルール文書、コンポーネントカタログ、承認済みのアーキテクチャ上の例外を置く。 |
 
-- Expo Router のルート入口、route group の `_layout`、極めて薄いルート bridge だけを配置します。
-- 完全な画面 JSX、業務状態、静的業務データ、大量のスタイルを配置しません。
-- route ファイルは、可能な限り `features/<feature>/pages` の画面を re-export します。
+### 2.2 Feature サブディレクトリの責務
 
-### `features/`
+| ディレクトリ | 置くべき内容 | 制約 |
+| --- | --- | --- |
+| `pages/` | ページ単位のコンポーネント。セクションの組み立て、ページの Controller Hook の呼び出し、状態とアクションの受け渡しを担う。 | 原則として `PascalCase` のファイル名を使用する。複雑な状態機械、大量のハンドラー、描画の細かな実装、大量のハードコードされたデータを抱えたままにしてはならない。 |
+| `ui/` | 現在の feature の表示コンポーネントや構成要素。カード、リスト項目、フォームのセクション、複雑な装飾、SVG グループなど。 | feature 固有の意味を持ってよいが、API リクエスト、認証／ストレージの読み書き、ルーティングの判断を直接行ってはならない。 |
+| `hooks/` | React との接続、局所的な UI 状態、ページ／フローの Controller、ライフサイクル、副作用の呼び出し。 | 下位のクライアントを重複実装せず、単独でテストできる業務ルールを React Hook 内に埋め込まず、ハンドラーで処理を渡すだけの呼び出しチェーンを作らない。 |
+| `model/` | 純粋な状態モデル、Reducer、セレクター、バリデーション、状態遷移、業務上の不変条件。 | React、Expo Router、API クライアント、可変のグローバル状態を import しない。Reducer とセレクターは純粋関数でなければならない。 |
+| `use-cases/` | ユーザーの意図に沿って命名する多段階の業務処理。プロフィール送信、投稿公開、アカウント切り替えなど。 | 原則として React に依存しない TypeScript 関数とする。UI、Toast、ナビゲーションを操作しない。API を 1 回呼び出すだけなら作成しない。 |
+| `events/` | 型を持つイベント名、ペイロード、Provider のスコープ内に限定したエントリーポイント。 | 軽量な通知にのみ使用する。業務データの基準、永続キャッシュ、直接の呼び出しチェーンの代替にしてはならない。 |
+| `data/` | 静的な表示データ、ローカルのプロトタイプ用データ、選択肢の設定、オフライン時の最小限の代替データ。 | リクエスト、副作用、継続的に管理する業務の正規データを置かない。 |
+| `constants/` | feature 専用で安定した定数、列挙型のマッピング、デザイン上の意味を持つ定数。 | 具体的なトークン値はプロジェクトのトークンを優先し、feature に複製しない。 |
+| `api/` | feature 専用のエンドポイントを扱う Adapter、DTO 変換、実行時のバリデーション、操作の意味を表す API メソッド。 | 汎用リクエスト処理、認証の更新、エラーレスポンスの共通構造などの基盤機能は `shared` に置く。ページの状態とナビゲーションを含めてはならない。 |
+| `context/` | 現在の feature または明確に定めたルートの範囲内で使う Provider。 | 範囲を限定しないグローバルストアにせず、頻繁に変わる大きなオブジェクトを持たせない。 |
+| `types/` | feature 専用の UI モデル、Use Case の入力／結果、イベントのペイロード、ドメイン型。 | バックエンドの契約は、承認されたパッケージの公開 API を通して提供する。バックエンドの内部ファイルを直接参照してはならない。 |
+| `utils/` | feature 専用の純粋関数。 | React Hook、ルート、API、可変のグローバル状態にアクセスしない。 |
 
-- 安定した製品機能またはユーザー flow 単位で分割します。
-- feature 名は画面上の位置ではなく、業務領域を表します。
-- 各 feature は自分のページ、private コンポーネント、Hook、データ、イベントをまとめます。
-- feature から別 feature のページや内部状態を直接読み取ってはいけません。
+### 2.3 Shared サブディレクトリの責務
 
-### `shared/`
+- `shared/ui`：プロジェクト共通の UI primitive と、安定していて特定の業務に偏らない UI pattern。文書で `primitive` と `pattern` を区別してよいが、そのための追加ディレクトリは必須ではない。
+- `shared/hooks`：外部から制御する開閉処理や、安定したキーボード用 Adapter など、特定の業務名を含まない汎用的な React の動作。業務フローの Hook はここに置かない。
+- `shared/events`：業務固有の意味を持たない、型付きイベントの基盤。
+- `shared/api`：リクエストクライアント、エラー処理、feature をまたいで使う通信基盤。
+- `shared/auth`：統一された認証機能。ページがトークンを直接操作してはならない。
+- `shared/constants`：feature をまたいで安定して使う定数と、プロジェクト共通のトークンのエントリーポイント。
+- `shared/types`：実際に feature をまたいで使う型。
+- `shared/utils`：副作用のない純粋なユーティリティ。
 
-- 複数 feature で安定して再利用され、単一画面の業務意味を持たない機能だけを配置します。
-- shared は `features/*` に依存してはいけません。
-- 「将来再利用するかもしれない」という理由だけで feature 固有実装を shared へ移しません。
+`shared` の公開モジュールは、それぞれの用途、利用側、API の責任範囲を明確にすべきである。「将来使うかもしれない」「2 つのページの見た目が似ている」という理由だけで `shared` に置いてはならない。
 
-### `assets/`
+### 2.4 依存関係の方向
 
-- ローカル画像、SVG、フォント、その他の静的リソースを配置します。
-- アセット分類はプロジェクト固有規約が決定しますが、ファイル名は用途を明確に表します。
+```text
+app
+└── feature pages
+    ├── feature ui ───────────────> shared/ui
+    └── feature hooks/controllers
+        ├── feature use-cases ────> feature model / feature api / shared
+        ├── feature model ────────> feature types / pure shared utilities
+        └── feature api ──────────> shared/api
+```
 
-### `types/`
+必ず守る事項：
 
-- App 全体に適用される環境宣言、resource module declaration、レイヤーをまたいで本当に共有する型を配置します。
-- feature 固有型は対応する feature 内に残します。
+- `shared` は `features` を import してはならない。
+- UI コンポーネントは、ルート、API クライアント、認証、ストレージ、Use Case、業務ストアに直接依存しない。
+- Page は UI と Controller の組み立てを担う。複数段階の API 処理を統括するロジックを、Page 内の各所に直接記述しない。
+- Controller Hook は React のライフサイクルとナビゲーションにアクセスしてよい。Use Case と Model は React、React Native UI、Expo Router にアクセスしてはならない。
+- `model`、`data`、`constants`、`types`、純粋な `utils` は、ページ、UI、Controller、API に逆方向で依存しない。
+- `api` は Page/UI に依存してはならない。DTO からドメイン／UI モデルへの変換は、責任範囲を明確にした箇所で行い、複数のページに同じ処理を複製しない。
+- feature は別の feature のページ、非公開の Hook、UI、データを import してはならない。feature 間での利用が本当に必要な場合は、承認された公開エントリーポイントを経由するか、特定の業務に偏らない機能を `shared` に移す。
+- ワークスペース間でコードを共有する場合は、パッケージの公開 `exports` を経由しなければならない。内部パスを直接 import してはならない。
+- EventBus、Context、モジュール単位のシングルトンを使って、明確に定めた依存関係の方向を迂回してはならない。
+- アーキテクチャ上の判断を避け、何でも `shared` に置いてはならない。
 
-### `plugins/`
+### 2.5 ファイルの命名
 
-- Expo config plugin またはビルド時拡張を配置します。
-- runtime の業務ロジックを配置しません。
-
-### `test/`
-
-- feature をまたぐテスト utility、fixture builder、テスト環境 helper を配置します。
-- 画面または module の unit test は、原則として対象ファイルの隣に配置します。
-
-## Feature サブディレクトリの責務
-
-### `pages/`
-
-- 画面レベルのコンポーネントで、既定では `PascalCase` のファイル名を使用します。
-- Page は section / UI コンポーネントを組み立て、Hook の結果を渡します。
-- Page に複雑な状態機械、多数の handler、低レベルの視覚詳細を長期的に持たせません。
-- Expo Router から re-export する Page は、プロジェクトの安定した export 規約を使用します。未指定なら `default export` を既定とします。
-
-### `ui/`
-
-- 現在の feature だけで使用する表示コンポーネントと構造 section を配置します。
-- feature 固有の意味を持つ名前を使用できますが、状態と callback は props で受け取ります。
-- API request やナビゲーション判断を直接行いません。
-- 複雑な装飾、SVG group、フォーム section、カード、リスト item はここへ配置します。
-
-### `hooks/`
-
-- feature のローカル状態、派生状態、handler、副作用、flow 編成を配置します。
-- API mutation/query の UI 状態 wrapper も配置できますが、低レベル client を再実装しません。
-
-### `events/`
-
-- feature 固有の typed event 名、payload、Provider-scoped 入口を配置します。
-- Event は軽量通知だけに使い、業務の事実源や永続 cache として使用しません。
-
-### `data/`
-
-- 静的表示データ、ローカル prototype データ、選択肢設定、最小限の offline fallback データを配置します。
-- request、副作用、長期的な業務事実を配置しません。
-
-### `constants/`
-
-- feature 固有で安定した定数、enum mapping、デザイン意味定数を配置します。
-- 具体的な Token 値は feature に複製せず、プロジェクトの Design Token から取得します。
-
-### `api/`
-
-- feature 固有の endpoint adapter、DTO 変換、意味のある API method を配置します。
-- 共通 request、Auth refresh、error envelope などの基盤は shared に配置します。
-
-### `context/`
-
-- 現在の feature または明示的な route 範囲の Provider だけを配置します。
-- Context を無境界な global store として使わず、頻繁に変わる大きな object によって subtree 全体を再レンダリングさせません。
-
-### `types/`
-
-- feature 固有の UI model、event payload、domain type を配置します。
-- backend と共有する contract は、プロジェクトで承認された cross-workspace package から公開し、backend の内部ファイルを直接参照しません。
-
-### `utils/`
-
-- feature 固有の pure function を配置します。
-- React Hook、ナビゲーション、可変 global state にアクセスしません。
-
-## Shared サブディレクトリの責務
-
-- `shared/ui`：feature 間で再利用する基礎 UI pattern。
-- `shared/hooks`：具体的な業務名を持たない cross-feature Hook。
-- `shared/events`：業務意味を持たない typed event bus 基盤。
-- `shared/api`：request client、error handling、feature 間 transport 基盤。
-- `shared/auth`：統一 Auth が存在するプロジェクトだけで使用し、画面から token を直接操作しません。
-- `shared/constants`：feature 間で安定した定数とプロジェクト Design Token の入口。
-- `shared/types`：feature 間で本当に共有する型。
-- `shared/utils`：副作用のない utility。
-
-## 依存方向
-
-既定の依存方向：
-
-~~~text
-app -> feature pages -> feature ui/hooks -> shared
-~~~
-
-必須ルール：
-
-- `shared` は `features` を import しません。
-- feature は別 feature の page、private Hook、private data を import しません。
-- `data`、`constants`、`types`、pure `utils` は page または UI へ逆依存しません。
-- UI コンポーネントはナビゲーション、API client、Auth、業務 store へ直接依存しません。
-- cross-workspace の共有コードは提供 package の公開 `exports` を使用し、内部 path を直接 import しません。
-
-2 つの feature が同じ機能を必要とする場合、抽象がすでに安定し業務に偏っていないかを確認してから shared へ移します。アーキテクチャ判断を避けるための雑多な置き場として shared を使用しません。
-
-## 命名とファイルルール
-
-- コンポーネントと Page：`PascalCase.tsx`
-- コンポーネントスタイル：`ComponentName.styles.ts`
-- Hook：`useSomething.ts`
-- pure utility：`camelCase.ts`
+- コンポーネントとページ：`PascalCase.tsx`
+- ページ Controller Hook：`useSomethingController.ts`
+- 局所的な動作を扱う Hook：`useSomething.ts`
+- Use Case：`verbNoun.ts`。例：`submitProfile.ts`、`publishPost.ts`
+- Reducer / State Model：`somethingReducer.ts`、`somethingModel.ts`
+- 純粋なユーティリティ：`camelCase.ts`
 - テスト：`name.test.ts` または `name.test.tsx`
-- 型：意味のあるファイル名を使い、汎用的な `types.ts` を無制限に増やしません
-- 定数：意味のあるファイル名を使い、汎用的な `constants.ts` を無制限に増やしません
-- route ファイルは Expo Router と現在のプロジェクトの小文字 path 命名に従います
+- 型：内容が伝わるファイル名を使い、何でも `types.ts` に追加して肥大化させない。
+- 定数：内容が伝わるファイル名を使い、何でも `constants.ts` に追加して肥大化させない。
+- ルートファイル：Expo Router と、プロジェクト既存の小文字パスのルールに従う。
 
-各ファイルは 1 つの主要責務を持ちます。分割は機械的な行数だけでなく、読み取り経路、変更理由、テスト境界で判断します。
+責務が伝わらない `helpers.ts`、`manager.ts`、`common.ts`、`service.ts` といった名前を避ける。実際に Service、Manager、Facade としての役割がある場合は、`AuthSessionCoordinator` のように管理対象や責任範囲を名前に表し、プロジェクト規約で責務を説明しなければならない。
 
-## ファイル配置の判断順序
+各ファイルの主な責務は 1 つにすべきである。分割するかどうかは、コードを読み進める流れ、変更理由、テストの単位に基づいて決める。コード行数だけで機械的に分割してはならず、層を作ること自体を目的に、処理を渡すだけのファイルを作ってもならない。
 
-コード追加前に次の順序で判断します。
+### 2.6 新しいファイルの配置を決める手順
 
-1. Expo Router の入口だけか。該当するなら `app/`。
-2. 1 つの feature だけで使用するか。該当するなら、その feature 内の最も具体的なディレクトリ。
-3. 複数 feature で安定して再利用され、業務意味を持たないか。該当するなら shared を検討。
-4. アセット、宣言、build plugin、test 基盤か。対応する top-level ディレクトリ。
-5. それでも判断できない場合、独自 top-level ディレクトリを追加せず、最小の feature 境界から始めて仮定を記録。
+1. Expo Router のエントリーポイントだけを担う場合：`app/` に置く。
+2. 1 つの feature でしか使わない場合：その feature 内で責務に最も合うディレクトリに置く。
+3. React のライフサイクル、またはページのアクションの受付を担う場合：`hooks/` に置く。複雑な場合は Controller と命名する。
+4. React に依存せず、ユーザーの意図を複数の手順で実行する場合：複雑さが導入条件を満たすなら `use-cases/` に置く。
+5. 純粋な状態遷移、ルール、セレクターの場合：`model/` または `utils/` に置く。
+6. 複数の feature で安定して再利用されているか、プロジェクトで基本 primitive と明確に位置づけられており、かつ業務固有の意味を持たない場合：`shared/` への配置を検討する。
+7. アセット、宣言、ビルドプラグイン、テスト基盤の場合：対応するトップレベルディレクトリに置く。
+8. それでも判断できない場合：feature 内の最小範囲にとどめ、置いた仮定を記録する。独自のトップレベルディレクトリを追加しない。
 
-プロジェクトの明示的な承認なしに `mobile/` の top-level 構成を変更したり、並行する別アーキテクチャを導入したりしません。
+プロジェクトで明示的に承認されない限り、`mobile/` のトップレベル構造を変更せず、既存の構成と並立する別のアーキテクチャを作らない。
+
+---

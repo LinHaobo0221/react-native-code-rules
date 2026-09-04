@@ -1,136 +1,116 @@
-# 01 Core Principles
+# 1. Purpose and scope of the rules
 
-> This document defines the goals, scope, sources of truth, task boundaries, and default decision-making for the shared rules.
+### 1.1 What the shared standards cover
 
-## Goals
+These shared standards establish consistent engineering requirements across apps for:
 
-Maintain consistent engineering structure and code quality across React Native / Expo Apps while allowing each App to implement completely different visuals and features based on its own Figma designs, brand, Tokens, motion, and business requirements.
+- The standard `mobile/` directory structure
+- Responsibility boundaries between Page, UI, Hook, Data, API, and Shared
+- Expo Router route organization
+- Figma node inspection, design analysis, asset export, and visual acceptance checks
+- iOS / Android interaction, keyboards, modals, safe areas, and accessibility
+- Performance diagnosis, rendering boundaries, lists, images, and resource lifecycles
+- Testing at each layer, testing async race conditions, and native acceptance checks
+- Minimum quality requirements for secure storage, authentication, networking, permissions, and privacy
+- Dependencies, checks, change scope, and delivery workflows
 
-Generated or modified code must:
+### 1.2 What each project must define
 
-- Integrate directly into the current project rather than exist as a standalone Demo or disconnected snippet
-- Follow the current project's directories, naming, dependencies, and technical decisions
-- Have clear component responsibilities for reading, testing, review, and future change
-- Cover iOS and Android by default; Web behavior does not replace native acceptance
-- Reproduce Figma faithfully when a task is design-driven instead of independently standardizing or redesigning the visuals
-- Avoid expanding business logic, dependencies, persistence, or infrastructure beyond the task scope
+Each app must define its own:
 
-## Scope
+- Design tokens for colors, typography, spacing, corner radii, shadows, and other values
+- Motion durations, easing, and transition parameters
+- Brand components, images, SVGs, and font assets
+- Route groups, route paths, tab names, and specific page paths
+- API contracts and approaches to authentication, local storage, and business state
+- Expo / React Native versions and permitted third-party dependencies
+- Target devices, specific performance budgets, and profiling tools
+- A test runner, component / E2E testing tools, and CI requirements
+- Data classification, permissions, third-party SDKs, and security risk levels
+- Its own Figma library, design files, and page links
 
-These rules apply to:
+### 1.3 Rule priority
 
-- React Native / Expo screen and component development
-- Expo Router organization
-- Figma design implementation
-- Local UI interaction
-- Refactoring and sharing existing screens
-- Code boundaries for mobile API integration, state, and data presentation
-- iOS / Android platform differences
+When rules conflict, the priority is:
 
-These rules do not define:
+1. The user's current explicit requirements and constraints
+2. More specific `AGENTS.md` and `app-specific.md` in the consuming repository
+3. These shared standards
+4. Conservative engineering judgment for cases not covered
 
-- Concrete UI appearance
-- Token values
-- Brand colors and fonts
-- Motion duration and easing
-- Business processes, API contracts, or database schemas
-- A fixed list of third-party libraries
+Project rules may override design values, dependency choices, and settings explicitly left to each project. They must not lower the minimum requirements for accessibility, cross-platform compatibility, type safety, or maintainability without explanation. If an exception is necessary, record the reason, affected areas, alternative approach, and acceptance criteria.
 
-The consuming project's `app-specific.md`, existing code, Figma design, or task requirements must supply those facts.
+### 1.4 Language and reading requirements
 
-## Sources of truth required before a task
+The repository using these rules must include the following declaration in an `AGENTS.md` that can be discovered:
 
-Confirm facts in this order before generating code:
+```md
+rules_language: en
+```
 
-1. Explicit requirements and constraints in the current task
-2. The consuming repository's root and `mobile/` `AGENTS.md` files
-3. Every document in these shared rules
-4. The consuming project's `app-specific.md`
-5. Current project directories, `package.json`, configuration, existing components, and tests
-6. Figma nodes, screenshots, variables, and assets when design is in scope
+Do not infer the rules language from the device locale, code text, or a single user message.
 
-Do not infer current-project facts only from an earlier answer, cached summary, or another App's implementation.
+Before generating or modifying React Native / Expo code, read:
 
-## Shared and project-specific boundaries
+1. The current task's explicit requirements and constraints
+2. The consuming project's `AGENTS.md` files at the root and in `mobile/`
+3. [00-core-rules.md](00-core-rules.md), in full for every task
+4. The mandatory and task-related sections of these standards specified by the root `AGENTS.md`
+5. Project-level `mobile/docs/agents/app-specific.md` or equivalent documentation, if present
+6. Directly relevant directories, `package.json`, configuration, existing components, public exports, and tests
+7. Figma nodes, screenshots, variables, and assets when the task involves design
 
-Shared rules define how code is organized and implemented. Project-specific rules define what the current App uses. For example:
+Do not limit your review of existing code to the target file. Before adding UI, hooks, utilities, or business flows, also inspect:
 
-- Shared rules require repeated colors to use Tokens; project rules choose Token names and values.
-- Shared rules require consistent transition semantics; project rules choose animation type, duration, and easing.
-- Shared rules require centralized route constants; project rules choose route groups and paths.
-- Shared rules require correct font mapping; project rules choose loaded fonts and language fallbacks.
+- Neighboring implementations in the current feature
+- `shared/ui`, `shared/hooks`, `shared/utils`, and public APIs
+- Existing design tokens, base components, and implementations that serve the same user intent
+- All direct consumers of the target component or flow
 
-When project-specific and shared rules conflict:
+If these standards conflict with more specific project rules, follow the project rules as long as they do not lower the minimum engineering quality requirements. Document the exception in the final response. If a task does not involve Figma at all, you may skip Figma node inspection; the rules for component responsibilities, reuse review, control flow, cross-platform quality, and security still apply.
 
-- Project rules may override design values, dependency choices, and explicit project-structure extension points.
-- Project rules must not silently lower the baseline for accessibility, cross-platform compatibility, type safety, or maintainability.
-- An approved exception must record its reason, impact, alternative mitigation, and acceptance criteria.
+### 1.5 Task scope and conservative implementation
 
-## Determine the task type
+Design implementation tasks:
 
-Classify the task before changing files.
+- Use Figma and project tokens as the visual sources of truth.
+- Implement only the pages, states, and interactions required by the task.
+- Do not connect static pages or prototypes to real APIs, authentication, or persistence without authorization.
 
-### Design implementation
+Feature implementation tasks:
 
-- Use Figma and project Design Tokens as the visual sources of truth.
-- Implement only the requested screens, states, and interactions.
-- If the user requests only a static screen or prototype, do not add a real API, Auth, or persistence.
+- First identify data sources, state ownership, error handling, and navigation boundaries.
+- Do not put business state in presentation components.
+- Do not introduce API contracts, databases, or storage solutions without confirmation.
 
-### Feature implementation
+Bug-fix or refactoring tasks:
 
-- Establish the data source, state owner, error behavior, and navigation boundary.
-- Do not place business state inside presentational components.
-- Do not create API contracts, databases, or local-storage strategies without confirmation.
+- First identify the root cause and affected areas.
+- Preserve unrelated behavior; do not use the task as an opportunity to rewrite the entire feature.
+- When the same flow, a shared shell, or a shared component is affected, inspect all direct consumers.
 
-### Fix or refactor
+Diagnostic or review tasks:
 
-- Identify the root cause and affected scope first.
-- Preserve unrelated behavior; do not use a local request as a reason to rewrite the entire feature.
-- If the issue belongs to one flow, shared shell, or shared component, inspect all directly affected screens.
+- By default, limit the work to inspection, verification, and explaining your findings.
+- Do not implement fixes or create new architecture unless explicitly requested.
 
-### Diagnosis or review
+When information is incomplete:
 
-- Default to read-only investigation, verification, and conclusions.
-- Do not implement a fix or create a new architecture unless modification was explicitly requested.
+- First inspect the project's existing implementations and project-level documentation.
+- Reuse established, stable patterns.
+- Choose the smallest reversible implementation.
+- Do not add dependencies, invent business behavior, or create tokens or a motion system on your own.
+- Explain assumptions and deviations in the final response.
 
-## Conservative implementation
+If different choices would significantly change product behavior, data structures, dependencies, or project boundaries, request confirmation first.
 
-When a rule, design, or requirement is incomplete:
+### 1.6 Six hard rules that must not be weakened
 
-- Inspect the current project's implementation and project-specific documentation
-- Reuse stable existing patterns
-- Choose the smallest reversible implementation
-- Do not add dependencies
-- Do not invent unconfirmed business behavior
-- State assumptions and deviations in the delivery summary
+1. **Search before creating**: Before adding a component, hook, utility, or flow, search existing implementations and record the reuse decision.
+2. **Abstract code that changes for the same reasons**: Only share code when its semantics, state contracts, and expected reasons for future changes match; visual similarity alone does not justify sharing.
+3. **Reuse at the lowest stable layer**: Prefer reusing tokens, primitives, behavior hooks, or pure rules instead of creating a one-size-fits-all component for every page.
+4. **Feature First**: Keep uncertain abstractions within the feature; move them to `shared` only after their contracts stabilize, they serve multiple features, and they are not tied to a particular business domain.
+5. **One action, one orchestration point**: Each major user action must have a single point of orchestration, where its key steps can be read in sequence.
+6. **No pass-through wrappers**: Remove wrapper functions unless they add semantics, a boundary, transformation, validation, error mapping, concurrency control, or the ability to swap implementations; use design patterns only to address actual complexity.
 
-If the options would materially change product behavior, data structure, dependencies, or project boundaries, request confirmation first.
-
-## Maintainability
-
-- “It runs” is not the definition of done.
-- Pages compose; UI components present; Hooks own state and behavior orchestration.
-- Evaluate repeated implementations for sharing, but extract only at the smallest appropriate boundary.
-- Do not over-abstract for hypothetical requirements that do not yet exist.
-- Within task scope, reduce unnecessarily complex files, branches, and duplicate styles.
-- Preserve unrelated changes made by the user or other developers.
-
-## Consistency across one flow
-
-When an issue affects a flow or shared shell, such as:
-
-- safe area and StatusBar
-- Stack / Tabs hierarchy
-- common header and close semantics
-- bottom action areas
-- keyboard avoidance
-- Modal / Sheet motion
-- list loading / empty / error states
-
-Inspect every screen that directly reuses that structure. If only part of the flow is changed, state the covered and uncovered scope at delivery.
-
-## Documentation and code language
-
-- Follow the consuming project's rule for explanatory language; otherwise follow the user's current language.
-- Preserve original code forms for package names, routes, components, Hooks, types, fields, and error codes.
-- Comments explain non-obvious intent, platform differences, and constraints; they do not restate visible code behavior.
+---

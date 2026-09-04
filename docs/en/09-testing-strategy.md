@@ -1,304 +1,145 @@
-# 09 Testing Strategy
+# 9. Testing rules
 
-> This document defines shared testing principles, layers, asynchronous-race coverage, and delivery requirements for React Native / Expo Apps. Concrete runners, component-testing libraries, E2E tools, and CI commands belong in project-specific rules.
+This section contains the full testing strategy requirements.
 
-## Test goals
+### 9.1 Testing goals
 
-Tests prove that user behavior and system invariants remain valid through modification, refactoring, upgrade, and failure conditions. They do not exist only to increase a coverage percentage.
+Tests verify that user behavior, public contracts, and system invariants hold after changes, shared-code extraction, refactoring, and upgrades, and under exceptional conditions. Their purpose is not just to increase coverage numbers or prove that private methods were called.
 
-Prioritize protection of:
+Prioritize protecting:
 
-- Critical user paths
-- Data conversion and business calculations
+- Core user paths and the flows that own action orchestration
+- Public props, variants, accessibility, and all direct consumers of shared components
+- Data transformations, validation, Use Cases, and business calculations
+- Reducer state transitions and illegal-state prevention
 - Navigation and state boundaries
 - API contracts and error mapping
 - Concurrency, cancellation, and stale responses
-- Auth, storage, and account switching
+- Authentication, storage, and account switching
 - Key interactions and accessibility
-- Root causes of fixed bugs
-- Native differences between iOS and Android
+- Regression coverage for the root causes of fixed bugs
+- Native iOS / Android differences
 
-## Testing facts each project defines
+### 9.2 Test layers
 
-Each App records in `app-specific.md`:
+1. **Static analysis**: formatting, lint, TypeScript typechecking, Expo config, assets, bundles, dependency boundaries, and circular-reference checks.
+2. **Pure Model / Use Case tests**: formatters, parsers, validation, selectors, Reducers, Strategies, Use Cases, sorting, merging paginated results, date/number conversions, error mapping, and route mapping.
+3. **Hook / Controller tests**: inputs, derived view models, loading, success, error, retry, refresh, load-more, debounce, timers, cleanup, subscriptions, races, optimistic updates, and mapping Use Case results to UI/navigation.
+4. **Component interaction tests**: verify text, input, press, toggle, select, loading, disabled, error, empty, selected, variants, and accessibility through user interactions.
+5. **Integration tests**: verify how Pages, Controllers, Use Cases, API adapters, Providers, route guards, authentication coordinators, storage adapters, caches, events, and pagination actually work together.
+6. **Native / E2E tests**: native navigation, back gestures, keyboards, autofill, safe areas, permissions, files, sharing, deep links, foreground/background transitions, EAS / release builds, and native animation.
 
-- Test runner and version
-- Test environment and path aliases
-- Unit / Hook / component / integration / E2E tools
-- Native-module mock entry points
-- Global setup and cleanup
-- Required CI checks
-- Coverage strategy
-- iOS / Android manual or automated acceptance matrix
-- Flaky-test handling process
+These shared standards do not require a particular test runner. React Native's official documentation marks React Test Renderer as deprecated; new projects should use a supported component testing approach focused on user behavior. Existing projects may continue maintaining tests that use it, but must document a migration plan and gaps in native acceptance testing.
 
-Shared rules do not mandate Jest, Vitest, or a specific E2E package.
+### 9.3 Test file organization
 
-## Test layers
-
-### 1. Static analysis
-
-The base layer includes:
-
-- formatter / format check
-- lint
-- TypeScript typecheck
-- Expo config, asset, or bundle checks
-
-Static analysis does not replace runtime tests, but it provides baseline feedback for every change.
-
-### 2. Pure unit test
-
-Appropriate subjects:
-
-- Formatters and parsers
-- View-model conversion
-- Reducers
-- Selection / sorting / pagination merge
-- Date, number, and unit conversion
-- Validation and error mapping
-- Stable IDs and route mapping
-
-Pure-function tests are fast and use no network, React, or native environment. They cover boundary and invalid inputs.
-
-### 3. Hook / state test
-
-Appropriate subjects:
-
-- Input and derived state
-- loading / success / error / retry
-- refresh and load-more
-- debounce / countdown / timers
-- Effect cleanup
-- Event subscription
-- Request races and stale responses
-- Optimistic update and rollback
-
-Hook tests use the project's approved React test environment and wrap updates in the correct `act` boundary. After each test, unmount and clean up subscriptions, timers, mocks, and pending work.
-
-### 4. Component interaction test
-
-Test user-perceivable behavior:
-
-- Whether copy and controls appear
-- What is displayed after user input
-- Whether press / toggle / select invokes the correct callback
-- Whether loading / disabled blocks a duplicate action
-- error / empty / selected states
-- Accessibility role, label, and state
-
-Prefer queries based on text, role, label, and user actions. Use `testID` only when no stable accessible entry exists or E2E requires a locator.
-
-Avoid assertions on:
-
-- Internal component state
-- Private Hook implementation
-- Props structure with no user meaning
-- Large component trees that change easily during refactoring
-
-React Native documentation currently marks React Test Renderer as deprecated. Therefore:
-
-- Shared rules do not make `test-renderer` the standard for new projects.
-- An existing project may maintain current tests until a dependency change is approved, but it records a migration plan and native-acceptance gaps.
-- A new project chooses a currently supported, user-behavior-oriented component-testing solution and records it in project-specific rules.
-
-### 5. Integration test
-
-Integration tests verify collaboration among real modules, for example:
-
-- Page Hook + API adapter + error mapping
-- Provider + route guard + navigation intent
-- Auth coordinator + storage adapter + API client
-- List cache + feature event + pagination
-- Form + validation + mutation + completion state
-
-Mock only true boundaries such as network, system storage, time, files, photo library, and navigation host. Use real internal pure functions and business modules whenever practical.
-
-### 6. Native / end-to-end test
-
-E2E or native manual acceptance covers what JavaScript tests cannot prove:
-
-- Native navigation and back gestures
-- Keyboard, autofill, and system back
-- safe area, StatusBar, and edge-to-edge
-- Permissions, photo library, camera, files, and sharing
-- Deep links and cold start
-- Foreground / background transitions
-- EAS / release-build behavior
-- Native components and animations on iOS / Android
-
-E2E prioritizes a small number of high-value paths such as startup, sign-in, the core feature, payment, or account operations. Do not duplicate every unit case in slow E2E tests.
-
-## Test-file organization
-
-- Tests live next to the tested module by default, named `name.test.ts` or the project-defined form.
-- Cross-feature test helpers live in `mobile/test/` rather than being copied into each feature.
-- Fixture builders and deferred helpers use semantic names and do not become an opaque general-purpose test framework.
-- Test IDs may use stable domain prefixes to trace requirements, defects, and security reviews.
+- By default, place tests adjacent to their modules and name them `name.test.ts` or `name.test.tsx`.
+- Shared-component tests cover public contracts; consumer-specific business behavior remains in feature tests.
+- Use Case and Reducer tests do not require mounting React components.
+- Place cross-feature helpers in `mobile/test/`, not duplicated in each feature.
+- Give fixture builders and deferred helpers descriptive names.
+- Test IDs may use stable domain prefixes to help trace requirements, defects, and security reviews.
 - Test descriptions clearly express Given / When / Then or Arrange / Act / Assert.
+- Each test primarily proves one behavior or invariant.
+- Do not write tests that lock in internal file boundaries, private-helper counts, or pass-through calls that add no value.
 
-One test primarily proves one behavior or invariant. Multiple assertions may exist only when they support the same conclusion.
+### 9.4 Shared-code and control-flow tests
 
-## Deterministic tests
+When extracting shared code or refactoring flows, verify at least:
 
-Tests run independently, repeatably, and without dependence on execution order.
+- New shared components preserve original behavior in all migrated consumers.
+- Variants, slots, and default props do not leak state between consumers.
+- Feature-local components moved into `shared` do not depend on routes, APIs, authentication, or feature stores.
+- After duplicate business rules are removed, only one source of truth remains.
+- For each public action, a Controller triggers the Use Case or direct flow that owns the operation exactly once.
+- Use Cases run key steps in the correct order, stop when a step fails, enforce idempotency/locks, and return correct typed results.
+- Reducers do not produce illegal state combinations, and side effects do not occur inside them.
+- Multiple Adapter / Strategy implementations satisfy the same contract.
 
-Control:
+Do not assert that `handleSave` calls `submit` and that `submit` then calls `executeSave`. Assert the result of the user's submission, how many times external side effects occur, state transitions, and error feedback.
+
+### 9.5 Deterministic tests
+
+Tests must be independent and repeatable, regardless of execution order. Control:
 
 - Current time and time zone
 - Timers, animation frames, and idle callbacks
-- UUID / random
+- UUID / randomness
 - Network responses
 - AppState
 - Platform
 - Permissions
 - File metadata
 - Storage state
-- Global singletons and module cache
+- Global singletons and module caches
 
-Do not use a real `sleep` or long timeout to wait for asynchronous state to “probably finish.”
+Do not use real `sleep` or long timeouts to wait for asynchronous state. Use fake timers or injectable clocks for time, and deferred Promises or controlled mocks for asynchronous ordering.
 
-Use fake timers or an injectable clock for time logic. Use deferred Promises or controlled mocks to advance asynchronous order precisely.
+### 9.6 Async behavior and race conditions
 
-## Asynchronous and race-condition tests
+Recommended:
 
-Advanced mobile tests cover timelines beyond normal success.
-
-A deferred Promise is recommended:
-
-~~~ts
+```ts
 type Deferred<T> = {
   promise: Promise<T>;
   resolve: (value: T) => void;
   reject: (error: unknown) => void;
 };
-~~~
-
-Important scenarios:
-
-- Request A starts first and resolves last; request B starts later and resolves first
-- A request is pending when the screen unmounts
-- A filter, route parameter, or account changes before an old response arrives
-- refresh and load-more start concurrently
-- A mutation is pressed rapidly multiple times
-- logout occurs while a storage write is pending
-- An account changes while refresh is pending
-- An old event arrives after listener cleanup
-- A picker / permission flow returns while AppState is not yet stable
-
-Test comments explain the timeline and assert:
-
-- Which result may commit
-- Which result must be cancelled or discarded
-- Whether the loading lock is eventually released
-- Whether cache, storage, public state, and user-facing errors remain consistent
-
-Do not depend on real network latency to create a race.
-
-## Mock principles
-
-- Prefer real pure modules and small fakes; avoid over-mocking internal implementation.
-- Network, Secure Storage, FileSystem, Image Picker, Linking, and native modules use explicit adapter mocks in Node tests.
-- Mock values conform to the real contract, including failure, cancellation, and invalid responses.
-- Reset call history, implementations, and module-level state for every test.
-- Do not leak a mock, timer, mounted root, or listener from one test into the next.
-- Do not mock the core behavior under test, or the test proves only that the mock works.
-
-## API and data tests
-
-The API layer covers at least:
-
-- method, path, query, body, and headers
-- Success envelope and runtime validation
-- Stable error-code mapping
-- Timeout, network, `4xx`, and `5xx`
-- Pagination cursor and deduplication
-- Cancellation / stale response
-- Whether a mutation may retry
-- Prevention of arbitrary sensitive-header overrides
-
-Do not connect a unit test to a real production endpoint.
-
-When backend contracts are shared, frontend and backend each validate their boundary, using contract tests or a shared schema to prevent drift.
-
-## Navigation tests
+```
 
 Cover at least:
 
-- Correct entry and route parameters
-- push / replace / back semantics
-- Difference between returning inside a modal and closing the whole flow
-- A tab child screen does not create a second tab bar
-- Route guards for logout, invalid accounts, and deep links
-- Root does not remount unexpectedly on normal state changes
-- A back gesture cannot enter an invalidated protected screen
+- Request A starts first but finishes last; request B starts later but finishes first
+- A request remains pending when the page unmounts
+- An old response returns after filters, route parameters, or accounts change
+- Refresh and load-more trigger together
+- Rapid repeated taps that trigger a mutation
+- Logout while a storage write is pending
+- Account switching while refresh is pending
+- Old events arrive after listener cleanup
+- A picker / permission flow returns before AppState has stabilized
 
-A Node integration test proves only state and navigation intent. Native animation, gestures, and system back still require acceptance on both platforms.
+Tests also assert:
 
-## Component and accessibility tests
+- Which result may be committed
+- Which result must be canceled or discarded
+- Whether the loading lock is eventually released
+- Whether cache, storage, public state, and user-facing errors are consistent
+- Whether forwarding, effects, or listeners execute the same user action more than once
 
-For key interactive components, verify at least:
+Do not create races using real network delays.
 
-- Role and label
-- selected / checked / disabled / expanded state
-- Visual disabled state matches actual event blocking
-- Hit-target expansion does not change visual layout
-- A callback does not fire repeatedly while loading
-- Error text has an understandable relationship to its input
-- Dynamic type or long copy does not hide the primary action
+### 9.7 Mocks, APIs, navigation, and accessibility
 
-Verify color, pixels, and detailed layout through Figma visual QA or an approved visual-regression tool rather than replacing them with many brittle style-object assertions.
+- Prefer real pure modules and small fakes.
+- Mock networking, secure storage, FileSystem, image pickers, Linking, and native modules through explicit adapters.
+- Mock return values conform to real contracts, including failures, cancellation, and invalid responses.
+- Reset call history, implementations, and module-level state for every test.
+- Do not leak mocks, timers, mounted roots, or listeners into subsequent tests.
+- Do not mock the core behavior being tested.
+- Use minimal fakes for Use Case dependencies; do not duplicate production business logic for tests.
+- API tests cover method, path, query, body, header, success envelope, runtime validation, errors, timeout, networking, `4xx`, `5xx`, pagination, cancellation, stale responses, retries, and sensitive headers.
+- Unit tests do not connect to real production endpoints.
+- Navigation tests cover entry points, parameters, push, replace, back, back within modals, closing an entire flow, tabs, route guards, logout, and deep links.
+- Component tests cover role, label, selected, checked, disabled, expanded, hit targets, duplicate prevention while loading, and relationships between inputs and error text.
 
-## Snapshot tests
+### 9.8 Snapshots, bug fixes, coverage, and CI
 
-- Use snapshots only for small, stable output with clear review value.
-- Do not create a huge snapshot for an entire complex screen.
-- Review snapshot updates manually; do not batch-update merely to remove failures.
-- Business calculations, interactions, and security invariants require explicit assertions and cannot rely on snapshots alone.
+- Use snapshots only for small, stable outputs with clear review value.
+- Do not generate giant snapshots for complex pages or generic config renderers.
+- Snapshot updates require human review.
+- Use explicit assertions for business calculations, interactions, state transitions, and security invariants.
+- For bug fixes, prioritize writing a failing test, making the smallest fix, checking for regressions, reviewing the same flow and shared consumers, and completing native acceptance checks.
+- Coverage signals blind spots; it is not a quality goal in itself.
+- Drive coverage by invariants and branches for authentication, payments, permissions, data deletion, Use Case branches, and races.
+- If key branches are not covered, explain why they cannot be automated and how to verify them manually.
 
-## Bug fixes
+Recommended CI order:
 
-Preferred bug-fix sequence:
-
-1. Add a failing test that reliably reproduces the root cause.
-2. Implement the smallest fix.
-3. Prove the regression test passes.
-4. Inspect direct consumers in the same flow or shared component.
-5. Complete necessary native acceptance.
-
-When a bug reproduces only on a device, in a system picker, or in a particular navigation state, preserve detailed manual reproduction steps and automate the separable state machine where possible.
-
-## Coverage
-
-- Coverage is a signal for blind spots, not the quality goal itself.
-- Do not test meaningless getters or implementation details solely for line coverage.
-- High-risk modules such as Auth, payment, permissions, data deletion, and races use invariant- or branch-driven coverage.
-- When a new critical branch cannot be automated, state why and record the corresponding manual acceptance.
-
-## CI layering
-
-Recommended feedback order:
-
-1. format / lint / typecheck
-2. Fast unit tests
+1. Format / lint / typecheck / dependency boundary
+2. Fast model / use-case unit tests
 3. Hook / component / integration tests
 4. Build / bundle / Expo config checks
 5. Critical E2E and release smoke tests
 
-Fast checks block obvious defects. Slow native tests may run on Pull Requests, release candidates, or nightly jobs. Project-specific rules define the exact strategy.
-
-## Review checklist
-
-- [ ] Tests protect user behavior or system invariants rather than implementation details.
-- [ ] Tests run independently and deterministically.
-- [ ] Every mounted root, timer, listener, and mock is cleaned up.
-- [ ] Async races use controlled Promises rather than real sleep.
-- [ ] Success, failure, cancellation, and stale paths are covered according to risk.
-- [ ] Component tests prefer roles, labels, and user actions.
-- [ ] Native capabilities are not declared complete from Node mocks alone.
-- [ ] A bug fix includes a root-cause regression test or explicit manual acceptance.
-- [ ] CI commands and pre-existing failures are recorded clearly.
-
-## Reference baseline
-
-- [React Native Testing Overview](https://reactnative.dev/docs/testing-overview)
+---
